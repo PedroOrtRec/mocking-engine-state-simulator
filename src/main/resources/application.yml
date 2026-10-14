@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: mocking-engine-state-simulator
+
+  # Habilitación de Virtual Threads de Java 21 (Project Loom)
+  # Permite pausar peticiones de forma asíncrona sin bloquear el hilo del SO
+  threads:
+    virtual:
+      enabled: true
+
+  # Configuración del DataSource (PostgreSQL)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mockengine
+    username: mockuser
+    password: mocksecret
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  # Configuración de JPA / Hibernate
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      # 'update' para desarrollo inicial: crea/actualiza tablas automáticamente
+      # En producción corporativa se suele usar 'validate' con Flyway/Liquibase
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# Configuración de Actuator para comprobar la salud del servicio
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Configuración de Logs (Similar al log4j2 visto en back_factinterna)
+logging:
+  level:
+    com.mockengine: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
