@@ -42,7 +42,7 @@ management:
     health:
       show-details: always
 
-# Configuración de Logs (Similar al log4j2 visto en back_factinterna)
+# Configuración de Logs
 logging:
   level:
     com.mockengine: DEBUG
