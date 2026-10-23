@@ -133,6 +133,62 @@ public class User implements UserDetails {
 
 ---
 
+## 3.1. Repositorio de Usuarios: `UserRepository`
+
+Creamos la interfaz en el paquete `com.mockengine.repository`:
+
+```java
+package com.mockengine.repository;
+
+import com.mockengine.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    // Spring Data JPA deriva automáticamente la consulta: SELECT * FROM users WHERE username = ?
+    Optional<User> findByUsername(String username);
+
+    // Validación rápida para el registro de nuevos usuarios:
+    boolean existsByUsername(String username);
+}
+```
+
+---
+
+## 3.2. Conexión con Spring Security: `CustomUserDetailsService`
+
+Spring Security necesita un componente que implemente `UserDetailsService` para consultar a PostgreSQL mediante `UserRepository`. Creamos `com.mockengine.security.CustomUserDetailsService`:
+
+```java
+package com.mockengine.security;
+
+import com.mockengine.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con username: " + username));
+    }
+}
+```
+
+---
+
 ## 4. Servicio de Generación y Validación de JWT (`JwtService`)
 
 Creamos el servicio `com.mockengine.security.JwtService`:
