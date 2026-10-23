@@ -395,10 +395,230 @@ public class SecurityConfiguration {
 
 ---
 
-## 7. Controlador de Autenticación (`AuthController`)
+## 7. Capa de Autenticación: DTOs, Servicio y Controlador
 
-Expone:
-* `POST /api/v1/auth/register`: Registro de nuevos usuarios con rol `ROLE_USER`.
-* `POST /api/v1/auth/login`: Retorna el JWT si las credenciales coinciden.
+Para completar el flujo de autenticación, implementamos los objetos de transferencia de datos (DTOs), el servicio de negocio (`AuthService`) y el controlador REST (`AuthController`).
+
+### 7.1. Objetos de Transferencia de Datos (DTOs)
+
+Creamos los DTOs en el paquete `com.mockengine.dto.auth`:
+
+#### `RegisterRequest.java`
+```java
+package com.mockengine.dto.auth;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class RegisterRequest {
+
+    @NotBlank(message = "El nombre de usuario no puede estar en blanco")
+    @Size(min = 3, max = 50, message = "El nombre de usuario debe tener entre 3 y 50 caracteres")
+    private String username;
+
+    @NotBlank(message = "La contraseña no puede estar en blanco")
+    @Size(min = 6, max = 100, message = "La contraseña debe tener al menos 6 caracteres")
+    private String password;
+}
+```
+
+#### `LoginRequest.java`
+```java
+package com.mockengine.dto.auth;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class LoginRequest {
+
+    @NotBlank(message = "El nombre de usuario no puede estar en blanco")
+    private String username;
+
+    @NotBlank(message = "La contraseña no puede estar en blanco")
+    private String password;
+}
+```
+
+#### `AuthResponse.java`
+```java
+package com.mockengine.dto.auth;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthResponse {
+
+    private String token;
+
+    @Builder.Default
+    private String type = "Bearer";
+
+    private String username;
+
+    private String role;
+
+    private long expiresInMs;
+}
+```
+
+---
+
+### 7.2. Servicio de Autenticación (`AuthService`)
+
+Encapsula la lógica de hashing de contraseñas, validación de unicidad, invocación al `AuthenticationManager` y emisión de tokens:
+
+```java
+package com.mockengine.service;
+
+import com.mockengine.dto.auth.AuthResponse;
+import com.mockengine.dto.auth.LoginRequest;
+import com.mockengine.dto.auth.RegisterRequest;
+import com.mockengine.entity.User;
+import com.mockengine.repository.UserRepository;
+import com.mockengine.security.JwtService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    @Value("${app.jwt.expiration-ms:86400000}")
+    private long jwtExpirationMs;
+
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+        log.info("Procesando registro para usuario: {}", request.getUsername());
+
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new IllegalArgumentException("El nombre de usuario ya está en uso: " + request.getUsername());
+        }
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(User.Role.ROLE_USER)
+                .build();
+
+        User savedUser = userRepository.save(user);
+        String token = jwtService.generateToken(savedUser);
+
+        log.info("Usuario registrado exitosamente con ID: {}", savedUser.getId());
+
+        return AuthResponse.builder()
+                .token(token)
+                .type("Bearer")
+                .username(savedUser.getUsername())
+                .role(savedUser.getRole().name())
+                .expiresInMs(jwtExpirationMs)
+                .build();
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        log.info("Procesando inicio de sesión para usuario: {}", request.getUsername());
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+        );
+
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado tras autenticación: " + request.getUsername()));
+
+        String token = jwtService.generateToken(user);
+
+        log.info("Inicio de sesión exitoso para usuario: {}", user.getUsername());
+
+        return AuthResponse.builder()
+                .token(token)
+                .type("Bearer")
+                .username(user.getUsername())
+                .role(user.getRole().name())
+                .expiresInMs(jwtExpirationMs)
+                .build();
+    }
+}
+```
+
+---
+
+### 7.3. Controlador REST (`AuthController`)
+
+Expone los endpoints públicos definidos en `SecurityConfiguration`:
+
+```java
+package com.mockengine.controller;
+
+import com.mockengine.dto.auth.AuthResponse;
+import com.mockengine.dto.auth.LoginRequest;
+import com.mockengine.dto.auth.RegisterRequest;
+import com.mockengine.service.AuthService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
+@Slf4j
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        log.info("Petición REST de registro para usuario: {}", request.getUsername());
+        AuthResponse response = authService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        log.info("Petición REST de login para usuario: {}", request.getUsername());
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+}
+```
+
+---
 
 ¡Avanza al **[Módulo 10: Control de Acceso (RBAC) y Modo Invitado](./10-rbac-multi-tenancy-guest-mode.md)** para implementar la segregación de recursos por usuario y el acceso anónimo efímero!
