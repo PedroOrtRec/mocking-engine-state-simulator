@@ -250,11 +250,14 @@ public class JwtService {
     }
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
 ```
+
+> [!TIP]
+> **Gestión Segura de Secretos:** La clave `app.jwt.secret` se inyecta desde la variable de entorno `JWT_SECRET` definida en tu archivo local `.env` (ignorado por Git). En el repositorio se versiona `.env.example` como plantilla para que cualquier desarrollador sepa qué variables configurar sin exponer claves reales.
 
 ---
 

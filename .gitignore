@@ -33,3 +33,10 @@ target/
 *.log
 app.log
 Thumbs.db
+
+### Environment & Secrets ###
+.env
+.env.local
+*.env
+application-local.yml
+application-local.properties
