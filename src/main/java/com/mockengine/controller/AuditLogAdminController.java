@@ -2,6 +2,8 @@ package com.mockengine.controller;
 
 import com.mockengine.document.RequestAuditLogDocument;
 import com.mockengine.repository.mongo.RequestAuditLogMongoRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/admin/logs")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'GUEST')")
+@Tag(name = "Auditoría de Peticiones", description = "Consulta e inspección de logs de peticiones y respuestas en MongoDB")
 @Slf4j
 public class AuditLogAdminController {
 

@@ -3,6 +3,7 @@ package com.mockengine.controller;
 import com.mockengine.dto.UserSummaryDTO;
 import com.mockengine.entity.User;
 import com.mockengine.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.List;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Administración de Usuarios", description = "Gestión de usuarios y asignación de roles RBAC")
 @Slf4j
 public class UserAdminController {
 

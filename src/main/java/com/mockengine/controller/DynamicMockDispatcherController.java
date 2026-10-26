@@ -1,6 +1,8 @@
 package com.mockengine.controller;
 
 import com.mockengine.service.MockExecutionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/mock")
 @RequiredArgsConstructor
+@Tag(name = "Motor Mock Dinámico", description = "Despachador wildcard público para ejecución de mocks y mutación de estado (/mock/**)")
 @Slf4j
 public class DynamicMockDispatcherController {
 
@@ -20,6 +23,7 @@ public class DynamicMockDispatcherController {
     /**
      * Intercepta cualquier método HTTP bajo la ruta /mock/**
      */
+    @Operation(summary = "Ejecutar mock wildcard", description = "Despacha dinámicamente según ruta, método, headers (X-Session-ID) y cuerpo JSON")
     @RequestMapping("/**")
     public ResponseEntity<?> handleMockRequest(
             HttpServletRequest request,

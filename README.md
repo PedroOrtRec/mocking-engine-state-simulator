@@ -1,8 +1,8 @@
 # Mocking Engine & State Simulator
 
-Motor dinámico de simulación de APIs HTTP, ingeniería de caos y emulación de estados para equipos de desarrollo Frontend y Mobile.
+Motor dinámico de simulación de APIs HTTP, ingeniería de caos, persistencia políglota y emulación de estados para equipos de desarrollo Frontend y Mobile.
 
-Construido sobre **Java 21**, **Spring Boot 3.3+**, **PostgreSQL** y **Virtual Threads (Project Loom)**.
+Construido sobre **Java 21**, **Spring Boot 3.3+**, **PostgreSQL**, **MongoDB**, **Redis**, **Virtual Threads (Project Loom)** y **Spring Security 6 con JWT**.
 
 ---
 
@@ -16,20 +16,27 @@ Construido sobre **Java 21**, **Spring Boot 3.3+**, **PostgreSQL** y **Virtual T
 ### Ejecución en 3 Pasos
 
 ```bash
-# 1. Iniciar la base de datos PostgreSQL local
+# 1. Iniciar la infraestructura multi-servicio (PostgreSQL, MongoDB y Redis)
 docker compose up -d
 
-# 2. Compilar el proyecto
-mvn clean compile
+# 2. Compilar el proyecto y ejecutar los tests
+mvn test
 
 # 3. Arrancar la aplicación
 mvn spring-boot:run
 ```
 
-Verificar que el servicio y la conexión a base de datos están operativos:
-```bash
-curl http://localhost:8080/actuator/health
-```
+### Verificación y Acceso
+
+* **Salud del servicio y bases de datos:**
+  ```bash
+  curl http://localhost:8080/actuator/health
+  ```
+* **Documentación Interactiva Swagger UI (OpenAPI 3):**
+  ```text
+  http://localhost:8080/swagger-ui.html
+  ```
+  *(Incluye botón de autenticación Bearer JWT para probar endpoints protegidos interactivamente)*.
 
 ---
 
@@ -43,8 +50,12 @@ Especificaciones técnicas orientadas a diseño, integración y despliegue:
 
 ## 🛠️ Stack Tecnológico
 
-* **Lenguaje:** Java 21 (LTS) con Hilos Virtuales habilitados.
-* **Framework:** Spring Boot 3.3.4 (Spring MVC, Spring Data JPA, Spring Actuator, Spring Validation).
-* **Persistencia:** PostgreSQL 16 (vía Docker) con HikariCP Connection Pool y Hibernate ORM.
-* **Procesamiento JSON:** Jackson Databind y NetworkNT JSON Schema Validator.
-* **Testing:** JUnit 5 Jupiter, Mockito, Testcontainers PostgreSQL.
+* **Lenguaje:** Java 21 (LTS) con Virtual Threads de Project Loom.
+* **Framework:** Spring Boot 3.3.4 (Spring MVC, Spring Data JPA, Spring Data MongoDB, Spring Data Redis, Spring Actuator, Spring Validation).
+* **Seguridad:** Spring Security 6 (Stateless, `SecurityFilterChain`, JJWT 0.12.6, RBAC `@PreAuthorize`).
+* **Persistencia Políglota:**
+  * **PostgreSQL 16:** Datos relacionales transaccionales (`User`, `MockEndpoint`, `ScenarioState`).
+  * **MongoDB 7.0:** Ingesta masiva no estructurada de logs de auditoría (`RequestAuditLogDocument`).
+  * **Redis 7.2:** Caché de rutas (`@Cacheable` / `@CacheEvict`) y TTL nativo de 24 horas para sesiones efímeras de invitados.
+* **Documentación de APIs:** Springdoc OpenAPI 3.0 (`springdoc-openapi-starter-webmvc-ui` 2.6.0).
+* **Testing:** JUnit 5 Jupiter, Mockito, Testcontainers (PostgreSQL, MongoDB, Redis).

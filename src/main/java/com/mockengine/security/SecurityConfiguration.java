@@ -33,7 +33,7 @@ public class SecurityConfiguration {
                 // Rutas públicas:
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/mock/**").permitAll() // El motor de mocks responde públicamente
-                .requestMatchers("/actuator/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 // Rutas que requieren autenticación:
                 .anyRequest().authenticated()
             )

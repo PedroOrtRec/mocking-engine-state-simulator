@@ -3,6 +3,8 @@ package com.mockengine.controller;
 import com.mockengine.dto.MockEndpointDTO;
 import com.mockengine.entity.MockEndpoint;
 import com.mockengine.repository.jpa.MockEndpointRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.List;
 @RequestMapping("/api/v1/admin/endpoints")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'GUEST')")
+@Tag(name = "Gestión de Endpoints Mock", description = "CRUD de endpoints simulados, contratos JSON Schema y simulación de red")
 @Slf4j
 public class MockEndpointAdminController {
 
