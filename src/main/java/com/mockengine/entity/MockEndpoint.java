@@ -57,6 +57,14 @@ public class MockEndpoint {
   @Column(name = "active", nullable = false)
   private Boolean active = true;
 
+  @Builder.Default
+  @Column(name = "owner_username", nullable = false)
+  private String ownerUsername = "system";
+
+  @Builder.Default
+  @Column(name = "is_ephemeral", nullable = false)
+  private boolean ephemeral = false;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
 

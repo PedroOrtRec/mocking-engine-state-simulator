@@ -4,6 +4,7 @@ import com.mockengine.entity.MockEndpoint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +19,10 @@ public interface MockEndpointRepository extends JpaRepository<MockEndpoint, Long
 
     // Permite listar los endpoints de un método HTTP concreto
     List<MockEndpoint> findByHttpMethod(String httpMethod);
+
+    // Para el panel del usuario regular / invitado:
+    List<MockEndpoint> findByOwnerUsername(String ownerUsername);
+
+    // Para tareas de limpieza de endpoints efímeros:
+    List<MockEndpoint> findByEphemeralTrueAndCreatedAtBefore(LocalDateTime threshold);
 }

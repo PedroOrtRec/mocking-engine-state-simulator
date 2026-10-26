@@ -35,4 +35,11 @@ public class AuthController {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/guest")
+    public ResponseEntity<AuthResponse> guestSession() {
+        log.info("Petición REST para generar sesión de invitado");
+        AuthResponse response = authService.generateGuestSession();
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 }

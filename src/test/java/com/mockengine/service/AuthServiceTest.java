@@ -157,4 +157,27 @@ class AuthServiceTest {
 
         verify(jwtService, never()).generateToken(any());
     }
+
+    @Test
+    @DisplayName("Debe generar sesión efímera para invitado con ROLE_GUEST")
+    void generateGuestSession_Success() {
+        // Given
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_guest_uuid");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtService.generateToken(any(User.class))).thenReturn("guest.jwt.token");
+
+        // When
+        AuthResponse response = authService.generateGuestSession();
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getToken()).isEqualTo("guest.jwt.token");
+        assertThat(response.getUsername()).startsWith("guest_");
+        assertThat(response.getRole()).isEqualTo("ROLE_GUEST");
+        assertThat(response.getType()).isEqualTo("Bearer");
+        assertThat(response.getExpiresInMs()).isEqualTo(86400000L);
+
+        verify(userRepository).save(any(User.class));
+        verify(jwtService).generateToken(any(User.class));
+    }
 }

@@ -135,4 +135,26 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.title").value("Unauthorized"))
                 .andExpect(jsonPath("$.error_code").value("BAD_CREDENTIALS"));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/guest debe responder 201 Created con token efímero de invitado")
+    void guest_ReturnsCreatedWithGuestToken() throws Exception {
+        AuthResponse response = AuthResponse.builder()
+                .token("jwt.guest.token")
+                .type("Bearer")
+                .username("guest_abcd1234")
+                .role("ROLE_GUEST")
+                .expiresInMs(86400000L)
+                .build();
+
+        when(authService.generateGuestSession()).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/auth/guest"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.token").value("jwt.guest.token"))
+                .andExpect(jsonPath("$.type").value("Bearer"))
+                .andExpect(jsonPath("$.username").value("guest_abcd1234"))
+                .andExpect(jsonPath("$.role").value("ROLE_GUEST"))
+                .andExpect(jsonPath("$.expiresInMs").value(86400000L));
+    }
 }
