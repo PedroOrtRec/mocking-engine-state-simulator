@@ -69,6 +69,7 @@ flowchart TD
 | **11** | [11-persistencia-poliglota-mongodb.md](./11-persistencia-poliglota-mongodb.md) | Coexistencia JPA + MongoDB, migración de `RequestAuditLog` a documento BSON, `MongoRepository` y tests con Testcontainers. |
 | **12** | [12-cache-y-ttl-con-redis.md](./12-cache-y-ttl-con-redis.md) | Spring Data Redis, `@Cacheable` / `@CacheEvict` para matching de rutas, y TTL nativo (24h) para sesiones de invitados. |
 | **13** | [13-tareas-programadas-limpieza-scheduled.md](./13-tareas-programadas-limpieza-scheduled.md) | Automatización con `@Scheduled`, expresiones cron, políticas de expiración y retención de datos. |
+| **13b** | [13b-gestion-estados-escenario-1-n.md](./13b-gestion-estados-escenario-1-n.md) | Gestión de estados 1:N, namespacing (`usuario:estado`), cuota máxima de 5 estados y protección del estado `default`. |
 | **14** | [14-openapi-swagger-y-portfolio.md](./14-openapi-swagger-y-portfolio.md) | Configuración de Springdoc OpenAPI, integración de autorización JWT en Swagger UI y recomendaciones de presentación para reclutadores. |
 
 ---

@@ -148,4 +148,4 @@ void shouldPurgeEndpointsOlderThan24Hours() {
 > Si en el futuro despliegas varias réplicas del backend en Kubernetes o detras de un balanceador de carga, cada réplica intentará ejecutar la tarea `@Scheduled` a la misma hora, generando condiciones de carrera.
 > En producción, este problema se resuelve utilizando **ShedLock** (`net.javacrumbs.shedlock:shedlock-spring`), una librería que usa una tabla en PostgreSQL o una clave en Redis para asegurar que **solo una instancia a la vez** ejecute el job programado.
 
-¡Avanza al módulo final **[Módulo 14: Documentación Interactiva con OpenAPI / Swagger y Preparación de Portfolio](./14-openapi-swagger-y-portfolio.md)**!
+¡Avanza al **[Módulo 13b: Gestión Avanzada de Estados de Escenario (1:N, Namespacing y Cuota Máxima)](./13b-gestion-estados-escenario-1-n.md)**!
