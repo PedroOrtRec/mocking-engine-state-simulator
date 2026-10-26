@@ -18,13 +18,21 @@ import java.util.Map;
 public class StateManagementService {
 
     private final ScenarioStateRepository scenarioStateRepository;
+    private final EphemeralSessionRedisService ephemeralSessionRedisService;
     private final ObjectMapper objectMapper;
 
     /**
      * Obtiene el mapa de variables de estado para una sesión concreta.
+     * Si es una sesión de invitado ("guest_*"), se recupera de Redis; de lo contrario, de PostgreSQL.
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getState(String sessionKey) {
+        if (isGuestSession(sessionKey)) {
+            return ephemeralSessionRedisService.getGuestState(sessionKey)
+                    .map(this::deserializeJson)
+                    .orElseGet(HashMap::new);
+        }
+
         return scenarioStateRepository.findBySessionKey(sessionKey)
                 .map(this::deserializeState)
                 .orElseGet(HashMap::new);
@@ -32,22 +40,28 @@ public class StateManagementService {
 
     /**
      * Actualiza una o más variables de estado para una sesión.
+     * Si es una sesión de invitado, actualiza en Redis con TTL de 24 horas; si no, en PostgreSQL.
      */
     @Transactional
     public void updateState(String sessionKey, Map<String, Object> newValues) {
-        ScenarioState stateEntity = scenarioStateRepository.findBySessionKey(sessionKey)
-                .orElseGet(() -> ScenarioState.builder()
-                        .sessionKey(sessionKey)
-                        .stateJson("{}")
-                        .build());
-
-        Map<String, Object> currentState = deserializeState(stateEntity);
+        Map<String, Object> currentState = getState(sessionKey);
         currentState.putAll(newValues);
 
         try {
-            stateEntity.setStateJson(objectMapper.writeValueAsString(currentState));
-            scenarioStateRepository.save(stateEntity);
-            log.debug("Estado actualizado para sesión [{}]: {}", sessionKey, currentState);
+            String json = objectMapper.writeValueAsString(currentState);
+            if (isGuestSession(sessionKey)) {
+                ephemeralSessionRedisService.saveGuestState(sessionKey, json);
+                log.debug("Estado de invitado actualizado en Redis [{}]: {}", sessionKey, currentState);
+            } else {
+                ScenarioState stateEntity = scenarioStateRepository.findBySessionKey(sessionKey)
+                        .orElseGet(() -> ScenarioState.builder()
+                                .sessionKey(sessionKey)
+                                .stateJson("{}")
+                                .build());
+                stateEntity.setStateJson(json);
+                scenarioStateRepository.save(stateEntity);
+                log.debug("Estado persistente actualizado en PostgreSQL [{}]: {}", sessionKey, currentState);
+            }
         } catch (Exception e) {
             log.error("Error al serializar el estado de sesión: {}", e.getMessage());
         }
@@ -58,15 +72,28 @@ public class StateManagementService {
      */
     @Transactional
     public void resetState(String sessionKey) {
-        scenarioStateRepository.deleteBySessionKey(sessionKey);
-        log.info("Estado reseteado para la sesión [{}]", sessionKey);
+        if (isGuestSession(sessionKey)) {
+            ephemeralSessionRedisService.deleteGuestState(sessionKey);
+            log.info("Estado de invitado reseteado en Redis [{}]", sessionKey);
+        } else {
+            scenarioStateRepository.deleteBySessionKey(sessionKey);
+            log.info("Estado persistente reseteado en PostgreSQL [{}]", sessionKey);
+        }
+    }
+
+    private boolean isGuestSession(String sessionKey) {
+        return sessionKey != null && sessionKey.startsWith("guest_");
     }
 
     private Map<String, Object> deserializeState(ScenarioState entity) {
+        return deserializeJson(entity.getStateJson());
+    }
+
+    private Map<String, Object> deserializeJson(String json) {
         try {
-            return objectMapper.readValue(entity.getStateJson(), new TypeReference<Map<String, Object>>() {});
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
-            log.warn("No se pudo deserializar stateJson para sesión {}. Creando estado vacío.", entity.getSessionKey());
+            log.warn("No se pudo deserializar stateJson. Creando estado vacío: {}", e.getMessage());
             return new HashMap<>();
         }
     }

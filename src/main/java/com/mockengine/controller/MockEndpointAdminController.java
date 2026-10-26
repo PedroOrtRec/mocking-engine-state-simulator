@@ -7,6 +7,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -45,6 +46,7 @@ public class MockEndpointAdminController {
     }
 
     @PostMapping
+    @CacheEvict(value = "activeMockEndpoints", allEntries = true)
     public ResponseEntity<MockEndpoint> create(
             @Valid @RequestBody MockEndpointDTO dto,
             Authentication authentication
@@ -75,6 +77,7 @@ public class MockEndpointAdminController {
     }
 
     @PutMapping("/{id}")
+    @CacheEvict(value = "activeMockEndpoints", allEntries = true)
     public ResponseEntity<MockEndpoint> update(
             @PathVariable Long id,
             @Valid @RequestBody MockEndpointDTO dto,
@@ -103,6 +106,7 @@ public class MockEndpointAdminController {
     }
 
     @PatchMapping("/{id}/toggle")
+    @CacheEvict(value = "activeMockEndpoints", allEntries = true)
     public ResponseEntity<MockEndpoint> toggleActive(@PathVariable Long id, Authentication authentication) {
         log.info("Cambiando estado de activación del mock endpoint con ID: {}", id);
 
@@ -117,6 +121,7 @@ public class MockEndpointAdminController {
     }
 
     @DeleteMapping("/{id}")
+    @CacheEvict(value = "activeMockEndpoints", allEntries = true)
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
         MockEndpoint existing = mockRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Mock no encontrado con ID: " + id));

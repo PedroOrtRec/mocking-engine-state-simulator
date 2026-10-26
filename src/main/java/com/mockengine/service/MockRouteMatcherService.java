@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
 
@@ -27,13 +28,22 @@ public class MockRouteMatcherService {
     }
 
     /**
+     * Cachea el listado completo de endpoints activos bajo la clave "all_active".
+     */
+    @Cacheable(value = "activeMockEndpoints", key = "'all_active'")
+    public List<MockEndpoint> getActiveEndpoints() {
+        log.debug("Cache MISS: Consultando mock endpoints activos en base de datos relacional");
+        return mockEndpointRepository.findByActiveTrue();
+    }
+
+    /**
      * Resuelve qué endpoint de base de datos coincide con el método HTTP y la ruta recibida.
      */
     public Optional<MatchResult> findMatch(String httpMethod, String subpath) {
         log.debug("Buscando mock para método: {} y subpath: {}", httpMethod, subpath);
 
-        // 1. Obtenemos todos los mocks activos para el método HTTP indicado
-        List<MockEndpoint> candidates = mockEndpointRepository.findByActiveTrue()
+        // 1. Obtenemos todos los mocks activos desde caché Redis o PostgreSQL
+        List<MockEndpoint> candidates = getActiveEndpoints()
                 .stream()
                 .filter(m -> m.getHttpMethod().equalsIgnoreCase(httpMethod))
                 .toList();
