@@ -2,7 +2,7 @@ package com.mockengine.controller;
 
 import com.mockengine.dto.MockEndpointDTO;
 import com.mockengine.entity.MockEndpoint;
-import com.mockengine.repository.MockEndpointRepository;
+import com.mockengine.repository.jpa.MockEndpointRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

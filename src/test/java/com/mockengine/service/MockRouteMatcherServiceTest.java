@@ -1,7 +1,7 @@
 package com.mockengine.service;
 
 import com.mockengine.entity.MockEndpoint;
-import com.mockengine.repository.MockEndpointRepository;
+import com.mockengine.repository.jpa.MockEndpointRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

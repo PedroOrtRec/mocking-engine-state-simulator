@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockengine.dto.MockEndpointDTO;
 import com.mockengine.entity.MockEndpoint;
 import com.mockengine.exception.GlobalExceptionHandler;
-import com.mockengine.repository.MockEndpointRepository;
+import com.mockengine.repository.jpa.MockEndpointRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

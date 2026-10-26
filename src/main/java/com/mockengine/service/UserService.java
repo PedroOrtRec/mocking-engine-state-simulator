@@ -2,7 +2,7 @@ package com.mockengine.service;
 
 import com.mockengine.dto.UserSummaryDTO;
 import com.mockengine.entity.User;
-import com.mockengine.repository.UserRepository;
+import com.mockengine.repository.jpa.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

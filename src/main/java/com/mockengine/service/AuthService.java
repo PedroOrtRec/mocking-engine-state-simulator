@@ -4,7 +4,7 @@ import com.mockengine.dto.auth.AuthResponse;
 import com.mockengine.dto.auth.LoginRequest;
 import com.mockengine.dto.auth.RegisterRequest;
 import com.mockengine.entity.User;
-import com.mockengine.repository.UserRepository;
+import com.mockengine.repository.jpa.UserRepository;
 import com.mockengine.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -32,6 +32,11 @@ spring:
       hibernate:
         format_sql: true
 
+  # Configuración de Spring Data MongoDB (Persistencia Políglota)
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/mockengine_logs}
+
 # Configuración de Actuator para comprobar la salud del servicio
 management:
   endpoints:

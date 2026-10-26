@@ -3,7 +3,7 @@ package com.mockengine.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockengine.entity.ScenarioState;
-import com.mockengine.repository.ScenarioStateRepository;
+import com.mockengine.repository.jpa.ScenarioStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

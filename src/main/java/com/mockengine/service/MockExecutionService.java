@@ -1,8 +1,8 @@
 package com.mockengine.service;
 
+import com.mockengine.document.RequestAuditLogDocument;
 import com.mockengine.entity.MockEndpoint;
-import com.mockengine.entity.RequestAuditLog;
-import com.mockengine.repository.RequestAuditLogRepository;
+import com.mockengine.repository.mongo.RequestAuditLogMongoRepository;
 import com.mockengine.service.MockRouteMatcherService.MatchResult;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -26,7 +26,7 @@ public class MockExecutionService {
     private final NetworkSimulationService networkSimulationService;
     private final JsonTemplateEngine jsonTemplateEngine;
     private final JsonSchemaValidationService schemaValidationService;
-    private final RequestAuditLogRepository auditLogRepository;
+    private final RequestAuditLogMongoRepository auditLogMongoRepository;
 
     public ResponseEntity<?> executeMock(
             String httpMethod, 
@@ -90,16 +90,24 @@ public class MockExecutionService {
 
         long durationMs = System.currentTimeMillis() - startTime;
 
-        // 7. Guardar log de auditoría en PostgreSQL
-        auditLogRepository.save(RequestAuditLog.builder()
+        // 7. Guardar log de auditoría en MongoDB
+        Map<String, String> requestHeaders = new HashMap<>();
+        if (request.getHeaderNames() != null) {
+            Collections.list(request.getHeaderNames()).forEach(headerName ->
+                    requestHeaders.put(headerName, request.getHeader(headerName)));
+        }
+
+        auditLogMongoRepository.save(RequestAuditLogDocument.builder()
                 .sessionKey(sessionKey)
+                .ownerUsername(endpoint.getOwnerUsername())
                 .httpMethod(httpMethod)
                 .requestUri(subpath)
                 .statusCode(endpoint.getStatusCode())
                 .durationMs(durationMs)
+                .requestHeaders(requestHeaders)
                 .requestBody(requestBody)
                 .responseBody(evaluatedBody)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build());
 
         return ResponseEntity.status(endpoint.getStatusCode())

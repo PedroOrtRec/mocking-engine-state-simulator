@@ -2,7 +2,7 @@ package com.mockengine.service;
 
 import com.mockengine.dto.UserSummaryDTO;
 import com.mockengine.entity.User;
-import com.mockengine.repository.UserRepository;
+import com.mockengine.repository.jpa.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package com.mockengine.repository;
+package com.mockengine.repository.jpa;
 
 import com.mockengine.entity.MockEndpoint;
 import org.springframework.data.jpa.repository.JpaRepository;

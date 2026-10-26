@@ -45,6 +45,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- 3.1 Spring Data MongoDB (Persistencia Políglota de Logs) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- 4. Validación de DTOs con anotaciones (@NotNull, @Min...) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -85,6 +91,11 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

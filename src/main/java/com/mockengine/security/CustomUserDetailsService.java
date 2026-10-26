@@ -1,6 +1,6 @@
 package com.mockengine.security;
 
-import com.mockengine.repository.UserRepository;
+import com.mockengine.repository.jpa.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

@@ -1,7 +1,7 @@
 package com.mockengine.service;
 
 import com.mockengine.entity.MockEndpoint;
-import com.mockengine.repository.MockEndpointRepository;
+import com.mockengine.repository.jpa.MockEndpointRepository;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
