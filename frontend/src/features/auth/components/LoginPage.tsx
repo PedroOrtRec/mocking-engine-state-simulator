@@ -1,108 +1,3 @@
-# Módulo 17: Autenticación, Gestión de Sesiones y Modo Invitado
-
-En este módulo construirás el flujo de autenticación completo en el frontend, conectando la SPA con la API de seguridad desarrollada en la Fase 2 (Módulos 09 y 10).
-
----
-
-## 🎯 Objetivos de Aprendizaje
-
-1. Implementar la gestión de sesión de cliente con **Zustand** y persistencia en `localStorage`.
-2. Crear formularios de **Login** y **Registro** con validación y manejo de errores RFC 7807.
-3. Desarrollar la funcionalidad **1-Click Guest Access**: un botón que permite a reclutadores y usuarios probar el simulador al instante como invitado.
-4. Proteger rutas en el cliente mediante un componente `ProtectedRoute` y aplicar renderizado condicional según el rol (`ROLE_USER` vs `ROLE_ADMIN`).
-
----
-
-## 1. El Almacén de Sesión con Zustand (`use-auth-store.ts`)
-
-En `frontend/src/stores/use-auth-store.ts`:
-
-```typescript
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-export interface AuthUser {
-  username: string;
-  role: 'ROLE_USER' | 'ROLE_ADMIN' | 'ROLE_GUEST';
-}
-
-interface AuthState {
-  token: string | null;
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  login: (token: string, user: AuthUser) => void;
-  logout: () => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      token: null,
-      user: null,
-      isAuthenticated: false,
-      login: (token, user) =>
-        set({
-          token,
-          user,
-          isAuthenticated: true,
-        }),
-      logout: () =>
-        set({
-          token: null,
-          user: null,
-          isAuthenticated: false,
-        }),
-    }),
-    {
-      name: 'mockengine-auth-storage',
-    }
-  )
-);
-```
-
----
-
-## 2. Servicios de Autenticación (`auth-api.ts`)
-
-En `frontend/src/features/auth/api/auth-api.ts`:
-
-```typescript
-import { apiClient } from '@/lib/api-client';
-import { AuthUser } from '@/stores/use-auth-store';
-
-export interface AuthResponse {
-  token: string;
-  username: string;
-  role: 'ROLE_USER' | 'ROLE_ADMIN' | 'ROLE_GUEST';
-  expiresInMs: number;
-}
-
-export const authApi = {
-  login: async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/api/v1/auth/login', credentials);
-    return response.data;
-  },
-
-  register: async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/api/v1/auth/register', credentials);
-    return response.data;
-  },
-
-  // Acceso instantáneo en 1-Click:
-  guestLogin: async (): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/api/v1/auth/guest');
-    return response.data;
-  },
-};
-```
-
----
-
-## 3. Página de Login con Acceso de Invitado (`LoginPage.tsx`)
-
-En `frontend/src/features/auth/components/LoginPage.tsx`:
-
-```tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -110,6 +5,7 @@ import { authApi } from '../api/auth-api';
 import { Sparkles, Lock, User, ArrowRight } from 'lucide-react';
 
 export function LoginPage() {
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -118,16 +14,21 @@ export function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
-      const data = await authApi.login({ username, password });
+      const data = isRegisterMode
+        ? await authApi.register({ username, password })
+        : await authApi.login({ username, password });
       login(data.token, { username: data.username, role: data.role });
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Credenciales inválidas');
+      setError(
+        err.response?.data?.detail ||
+          (isRegisterMode ? 'No se pudo completar el registro' : 'Credenciales inválidas')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -140,7 +41,7 @@ export function LoginPage() {
       const data = await authApi.guestLogin();
       login(data.token, { username: data.username, role: data.role });
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch {
       setError('No se pudo generar la sesión de invitado');
     } finally {
       setIsLoading(false);
@@ -161,12 +62,15 @@ export function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-slate-300">Usuario</label>
+            <label htmlFor="username" className="text-xs font-medium text-slate-300">
+              Usuario
+            </label>
             <div className="relative mt-1">
               <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
               <input
+                id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -177,10 +81,13 @@ export function LoginPage() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-300">Contraseña</label>
+            <label htmlFor="password" className="text-xs font-medium text-slate-300">
+              Contraseña
+            </label>
             <div className="relative mt-1">
               <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -195,10 +102,29 @@ export function LoginPage() {
             disabled={isLoading}
             className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
           >
-            {isLoading ? 'Iniciando...' : 'Iniciar Sesión'}
+            {isLoading
+              ? 'Procesando...'
+              : isRegisterMode
+              ? 'Crear Cuenta'
+              : 'Iniciar Sesión'}
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>
+
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegisterMode((prev) => !prev);
+              setError(null);
+            }}
+            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            {isRegisterMode
+              ? '¿Ya tienes cuenta? Inicia sesión'
+              : '¿No tienes cuenta? Regístrate aquí'}
+          </button>
+        </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -222,27 +148,4 @@ export function LoginPage() {
     </div>
   );
 }
-```
 
----
-
-## 4. Protección de Rutas (`ProtectedRoute.tsx`)
-
-En `frontend/src/app/router.tsx`, envolvemos las rutas privadas:
-
-```tsx
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuthStore } from '@/stores/use-auth-store';
-
-export function ProtectedRoute() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <Outlet />;
-}
-```
-
-¡Avanza al **[Módulo 18: Mock Studio y Gestión de Endpoints](./18-gestion-endpoints-mock-studio.md)** para construir el panel interactivo de creación de mocks!

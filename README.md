@@ -1,8 +1,8 @@
 # Mocking Engine & State Simulator
 
-Motor dinámico de simulación de APIs HTTP, ingeniería de caos, persistencia políglota y emulación de estados para equipos de desarrollo Frontend y Mobile.
+Motor dinámico Fullstack de simulación de APIs HTTP, ingeniería de caos, persistencia políglota y emulación de estados para equipos de desarrollo Frontend y Mobile.
 
-Construido sobre **Java 21**, **Spring Boot 3.3+**, **PostgreSQL**, **MongoDB**, **Redis**, **Virtual Threads (Project Loom)** y **Spring Security 6 con JWT**.
+Construido sobre **Java 21**, **Spring Boot 3.3+**, **PostgreSQL**, **MongoDB**, **Redis**, **Virtual Threads (Project Loom)**, **Spring Security 6 con JWT** y una SPA interactiva en **React 19**, **Vite**, **TypeScript**, **Tailwind CSS v4** y **Vitest**.
 
 ---
 
@@ -11,32 +11,34 @@ Construido sobre **Java 21**, **Spring Boot 3.3+**, **PostgreSQL**, **MongoDB**,
 ### Requisitos Previos
 * **Java 21** o superior instalado (`java -version`).
 * **Maven 3.9+** (`mvn -v`).
+* **Node.js 22+** y **npm** (`node -v`).
 * **Docker** y **Docker Compose** en ejecución.
 
-### Ejecución en 3 Pasos
+### Ejecución Fullstack con Docker Compose
 
 ```bash
-# 1. Iniciar la infraestructura multi-servicio (PostgreSQL, MongoDB y Redis)
-docker compose up -d
+# Levantar todos los servicios (PostgreSQL, MongoDB, Redis, Backend y Frontend con HMR)
+docker compose up -d --build
+```
 
-# 2. Compilar el backend y ejecutar los tests
-cd backend && mvn test
+### Ejecución para Desarrollo Local
 
-# 3. Arrancar la aplicación backend
-mvn spring-boot:run
+```bash
+# 1. Iniciar bases de datos en segundo plano
+docker compose up -d postgres mongodb redis
+
+# 2. Iniciar el Backend (Puerto 8080)
+cd backend && mvn spring-boot:run
+
+# 3. En otra terminal, iniciar el Frontend SPA (Puerto 5173)
+cd frontend && npm run dev
 ```
 
 ### Verificación y Acceso
 
-* **Salud del servicio y bases de datos:**
-  ```bash
-  curl http://localhost:8080/actuator/health
-  ```
-* **Documentación Interactiva Swagger UI (OpenAPI 3):**
-  ```text
-  http://localhost:8080/swagger-ui.html
-  ```
-  *(Incluye botón de autenticación Bearer JWT para probar endpoints protegidos interactivamente)*.
+* **Mocking Engine Studio (Frontend SPA):** `http://localhost:5173`
+* **Salud del servicio y bases de datos:** `curl http://localhost:8080/actuator/health`
+* **Documentación Interactiva Swagger UI (OpenAPI 3):** `http://localhost:8080/swagger-ui.html`
 
 ---
 
