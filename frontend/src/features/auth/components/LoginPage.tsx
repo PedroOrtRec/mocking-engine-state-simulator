@@ -23,10 +23,11 @@ export function LoginPage() {
         ? await authApi.register({ username, password })
         : await authApi.login({ username, password });
       login(data.token, { username: data.username, role: data.role });
-      navigate('/dashboard');
-    } catch (err: any) {
+      navigate('/mocks');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { detail?: string } } };
       setError(
-        err.response?.data?.detail ||
+        errorObj.response?.data?.detail ||
           (isRegisterMode ? 'No se pudo completar el registro' : 'Credenciales inválidas')
       );
     } finally {
@@ -40,7 +41,7 @@ export function LoginPage() {
     try {
       const data = await authApi.guestLogin();
       login(data.token, { username: data.username, role: data.role });
-      navigate('/dashboard');
+      navigate('/mocks');
     } catch {
       setError('No se pudo generar la sesión de invitado');
     } finally {
