@@ -14,6 +14,7 @@ export interface MockEndpoint {
   errorRate?: number;
   failureStatusCode?: number;
   requestSchema?: string;
+  stateUpdates?: string;
   active: boolean;
   ownerUsername: string;
   ephemeral?: boolean;

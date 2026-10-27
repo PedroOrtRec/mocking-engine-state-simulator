@@ -7,12 +7,22 @@ import {
   type MockEndpointPayload,
 } from '../api/endpoints-api';
 import {
+  serializeRulesToJson,
+  parseJsonToRules,
+  type StateMutationRule,
+  type StateMutationOp,
+  type StateValueType,
+} from '../utils/mutation-rules';
+import {
   Wifi,
   Signal,
   AlertTriangle,
   Flame,
   Settings,
   HelpCircle,
+  Database,
+  Plus,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -78,6 +88,11 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
   );
   const [responseHeaders, setResponseHeaders] = useState(initialData?.responseHeaders ?? '');
   const [requestSchema, setRequestSchema] = useState(initialData?.requestSchema ?? '');
+
+  // State mutations rules (Option 3A)
+  const [rules, setRules] = useState<StateMutationRule[]>(() =>
+    parseJsonToRules(initialData?.stateUpdates)
+  );
 
   // Chaos controls
   const initialDelay = initialData?.delayMs ?? 0;
@@ -161,6 +176,42 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
     }
   };
 
+  // State mutation rules handlers
+  const handleAddRule = () => {
+    setRules((prev) => [
+      ...prev,
+      {
+        id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        property: '',
+        op: 'set',
+        valueType: 'string',
+        value: '',
+      },
+    ]);
+  };
+
+  const handleRemoveRule = (id: string) => {
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleUpdateRule = (id: string, updates: Partial<StateMutationRule>) => {
+    setRules((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        const updated = { ...r, ...updates };
+        if (updates.op === 'toggle' || updates.op === 'unset') {
+          updated.value = '';
+        } else if (updates.op === 'inc' || updates.op === 'dec') {
+          updated.valueType = 'number';
+          if (!updated.value) updated.value = '1';
+        }
+        return updated;
+      })
+    );
+  };
+
+  const serializedPreview = serializeRulesToJson(rules);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
@@ -193,6 +244,7 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
 
     const normalizedPath = pathPattern.startsWith('/') ? pathPattern : `/${pathPattern}`;
     const normalizedErrorRate = errorRate > 0 ? Number((errorRate / 100).toFixed(2)) : 0.0;
+    const serializedStateUpdates = serializeRulesToJson(rules);
 
     const payload: MockEndpointPayload = {
       name: name.trim(),
@@ -202,6 +254,7 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
       responseBody,
       responseHeaders: responseHeaders.trim() ? responseHeaders.trim() : undefined,
       requestSchema: requestSchema.trim() ? requestSchema.trim() : undefined,
+      stateUpdates: serializedStateUpdates,
       delayMs: delayMs > 0 ? delayMs : 0,
       errorRate: normalizedErrorRate,
       failureStatusCode: errorRate > 0 ? failureStatusCode : undefined,
@@ -237,7 +290,7 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
             {isEditing ? 'Editar Mock Endpoint' : 'Registrar Mock Endpoint'}
           </h2>
           <p className="text-xs text-slate-400">
-            Define la ruta, respuesta y simula condiciones de red en tiempo real
+            Define la ruta, respuesta, mutaciones de estado y simula condiciones de red en tiempo real
           </p>
         </div>
       </div>
@@ -333,6 +386,171 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
             className="w-full font-mono text-xs bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 focus:outline-none focus:border-indigo-500"
             required
           />
+        </div>
+
+        {/* SECCIÓN INTEGRADA: MUTACIONES DE ESTADO DE SESIÓN (OPCIÓN 3A) */}
+        <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-indigo-400">
+              <Database className="h-4 w-4 text-cyan-400" />
+              <span>Mutaciones de Estado de Sesión (Opcional)</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddRule}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-300 text-xs font-medium rounded-lg transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Añadir regla de estado</span>
+            </button>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Modifica automáticamente las variables del estado de la sesión (PostgreSQL / Redis) tras responder esta petición.
+            Soporta operadores atómicos e interpolación <code className="text-indigo-300 font-mono">{'{{body.*}}'}</code>.
+          </p>
+
+          {rules.length === 0 ? (
+            <div className="py-3 text-center text-xs text-slate-500 border border-dashed border-slate-800/80 rounded-lg">
+              No hay mutaciones de estado configuradas. Pulsa «Añadir regla de estado» para agregar una.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {rules.map((rule, idx) => {
+                const isToggleOrUnset = rule.op === 'toggle' || rule.op === 'unset';
+                const showValueType = rule.op === 'set' || rule.op === 'push';
+
+                return (
+                  <div
+                    key={rule.id}
+                    className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs"
+                  >
+                    {/* Propiedad */}
+                    <div className="w-full sm:w-1/4">
+                      <label htmlFor={`rule-prop-${rule.id}`} className="sr-only">
+                        Propiedad {idx + 1}
+                      </label>
+                      <input
+                        id={`rule-prop-${rule.id}`}
+                        type="text"
+                        value={rule.property}
+                        onChange={(e) => handleUpdateRule(rule.id, { property: e.target.value })}
+                        placeholder="Propiedad (ej. balance)"
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
+                      />
+                    </div>
+
+                    {/* Operación */}
+                    <div className="w-full sm:w-1/4">
+                      <label htmlFor={`rule-op-${rule.id}`} className="sr-only">
+                        Operación {idx + 1}
+                      </label>
+                      <select
+                        id={`rule-op-${rule.id}`}
+                        value={rule.op}
+                        onChange={(e) =>
+                          handleUpdateRule(rule.id, { op: e.target.value as StateMutationOp })
+                        }
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-indigo-300 font-medium focus:outline-none focus:border-indigo-500 text-xs"
+                      >
+                        <option value="set">Asignar (=)</option>
+                        <option value="inc">Incrementar (+ $inc)</option>
+                        <option value="dec">Decrementar (- $dec)</option>
+                        <option value="toggle">Invertir booleano (! $toggle)</option>
+                        <option value="push">Añadir a lista ($push)</option>
+                        <option value="unset">Eliminar ($unset)</option>
+                      </select>
+                    </div>
+
+                    {/* Tipo de valor (solo para set o push) */}
+                    {showValueType && (
+                      <div className="w-full sm:w-1/5">
+                        <label htmlFor={`rule-valtype-${rule.id}`} className="sr-only">
+                          Tipo de valor {idx + 1}
+                        </label>
+                        <select
+                          id={`rule-valtype-${rule.id}`}
+                          value={rule.valueType}
+                          onChange={(e) =>
+                            handleUpdateRule(rule.id, { valueType: e.target.value as StateValueType })
+                          }
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-slate-300 focus:outline-none focus:border-indigo-500 text-xs"
+                        >
+                          <option value="string">Texto / Var</option>
+                          <option value="number">Número</option>
+                          <option value="boolean">Booleano</option>
+                          <option value="json">JSON</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Valor */}
+                    <div className="flex-1">
+                      {isToggleOrUnset ? (
+                        <span className="text-[11px] text-slate-500 italic block py-1.5 px-2">
+                          No requiere valor
+                        </span>
+                      ) : rule.valueType === 'boolean' && showValueType ? (
+                        <div>
+                          <label htmlFor={`rule-val-bool-${rule.id}`} className="sr-only">
+                            Valor booleano {idx + 1}
+                          </label>
+                          <select
+                            id={`rule-val-bool-${rule.id}`}
+                            value={rule.value === 'false' ? 'false' : 'true'}
+                            onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                          >
+                            <option value="true">true</option>
+                            <option value="false">false</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label htmlFor={`rule-val-text-${rule.id}`} className="sr-only">
+                            Valor {idx + 1}
+                          </label>
+                          <input
+                            id={`rule-val-text-${rule.id}`}
+                            type="text"
+                            value={rule.value}
+                            onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
+                            placeholder={
+                              rule.op === 'inc' || rule.op === 'dec'
+                                ? 'ej. 1 o {{body.amount}}'
+                                : 'ej. valor o {{body.name}}'
+                            }
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Botón eliminar fila */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveRule(rule.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors self-end sm:self-center"
+                      title="Eliminar regla"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+
+              {serializedPreview && (
+                <div className="pt-1 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                    Vista previa JSON generada (stateUpdates enviado al backend):
+                  </span>
+                  <pre className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-cyan-300 font-mono text-[11px] overflow-x-auto max-h-24">
+                    {serializedPreview}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* SECCIÓN INTEGRADA: SIMULACIÓN DE RED & CAOS */}

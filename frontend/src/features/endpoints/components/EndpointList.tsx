@@ -3,7 +3,7 @@ import { useEndpoints } from '../hooks/use-endpoints';
 import type { MockEndpoint } from '../api/endpoints-api';
 import { HttpMethodBadge } from './HttpMethodBadge';
 import { EndpointFormModal } from './EndpointFormModal';
-import { Copy, Check, Plus, Power, Trash2, Pencil, Clock, AlertTriangle } from 'lucide-react';
+import { Copy, Check, Plus, Power, Trash2, Pencil, Clock, AlertTriangle, Database } from 'lucide-react';
 
 interface EndpointListProps {
   activeSessionKey?: string;
@@ -75,7 +75,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                 <th className="py-2.5 px-3">Método</th>
                 <th className="py-2.5 px-3">Ruta (/mock)</th>
                 <th className="py-2.5 px-3">HTTP</th>
-                <th className="py-2.5 px-3">Simulación Caos</th>
+                <th className="py-2.5 px-3">Efectos & Caos</th>
                 <th className="py-2.5 px-3">Estado</th>
                 <th className="py-2.5 px-3 text-right">Acciones</th>
               </tr>
@@ -84,6 +84,10 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
               {endpoints.map((ep) => {
                 const hasDelay = typeof ep.delayMs === 'number' && ep.delayMs > 0;
                 const hasErrorRate = typeof ep.errorRate === 'number' && ep.errorRate > 0;
+                const hasStateUpdates =
+                  typeof ep.stateUpdates === 'string' &&
+                  ep.stateUpdates.trim() !== '' &&
+                  ep.stateUpdates.trim() !== '{}';
 
                 return (
                   <tr key={ep.id} className="hover:bg-slate-800/40 transition-colors">
@@ -95,6 +99,15 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                     <td className="py-2.5 px-3 font-mono text-emerald-400">{ep.statusCode}</td>
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {hasStateUpdates && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950/60 border border-cyan-800 text-cyan-300"
+                            title="Aplica mutaciones de estado automáticas en sesión"
+                          >
+                            <Database className="h-2.5 w-2.5" />
+                            Mutación Estado
+                          </span>
+                        )}
                         {hasDelay && (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-950/60 border border-indigo-800 text-indigo-300"
@@ -113,7 +126,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                             {Math.round(ep.errorRate! * 100)}% err
                           </span>
                         )}
-                        {!hasDelay && !hasErrorRate && (
+                        {!hasDelay && !hasErrorRate && !hasStateUpdates && (
                           <span className="text-[11px] text-slate-500">—</span>
                         )}
                       </div>

@@ -31,6 +31,7 @@ describe('EndpointList Component', () => {
       pathPattern: '/api/v1/products',
       statusCode: 200,
       responseBody: '[]',
+      stateUpdates: '{"stock": {"$dec": 1}}',
       delayMs: 60,
       errorRate: 0.15,
       failureStatusCode: 502,
@@ -60,6 +61,7 @@ describe('EndpointList Component', () => {
 
     expect(screen.getByText('60ms')).toBeInTheDocument();
     expect(screen.getByText('15% err')).toBeInTheDocument();
+    expect(screen.getByText('Mutación Estado')).toBeInTheDocument();
     expect(screen.getByText('GET')).toBeInTheDocument();
   });
 

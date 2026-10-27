@@ -67,7 +67,56 @@ describe('EndpointFormModal Component', () => {
     });
   });
 
-  it('debe cargar initialData en modo edición y actualizar con update', async () => {
+  it('debe permitir añadir reglas de mutación de estado visuales y serializarlas', async () => {
+    const user = userEvent.setup();
+    const handleClose = vi.fn();
+    vi.mocked(endpointsApi.create).mockResolvedValueOnce({
+      id: 20,
+      name: 'Comprar producto',
+      httpMethod: 'POST',
+      pathPattern: '/api/checkout',
+      statusCode: 200,
+      responseBody: '{"status": "ok"}',
+      active: true,
+      ownerUsername: 'test_user',
+    });
+
+    renderWithClient(<EndpointFormModal isOpen={true} onClose={handleClose} />);
+
+    const nameInput = screen.getByLabelText(/nombre descriptivo/i);
+    await user.type(nameInput, 'Comprar producto');
+
+    // Añadir regla de estado
+    const addRuleBtn = screen.getByRole('button', { name: /añadir regla de estado/i });
+    await user.click(addRuleBtn);
+
+    const propInput = screen.getByPlaceholderText(/propiedad \(ej\. balance\)/i);
+    await user.type(propInput, 'balance');
+
+    const opSelect = screen.getByRole('combobox', { name: /operación 1/i });
+    await user.selectOptions(opSelect, 'inc');
+
+    const valInput = screen.getByPlaceholderText(/ej\. 1 o \{\{body\.amount\}\}/i);
+    await user.type(valInput, '50');
+
+    // Verificar que aparece la vista previa
+    expect(screen.getByText(/vista previa json generada/i)).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole('button', { name: /crear endpoint/i });
+    fireEvent.submit(submitBtn.closest('form')!);
+
+    await waitFor(() => {
+      expect(endpointsApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Comprar producto',
+          stateUpdates: expect.stringContaining('"balance"'),
+        })
+      );
+      expect(handleClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('debe cargar initialData en modo edición y actualizar con update incluyendo stateUpdates', async () => {
     const user = userEvent.setup();
     const handleClose = vi.fn();
 
@@ -78,6 +127,7 @@ describe('EndpointFormModal Component', () => {
       pathPattern: '/api/v1/cart',
       statusCode: 201,
       responseBody: '{"items": 2}',
+      stateUpdates: '{\n  "itemsInCart": {\n    "$inc": 1\n  }\n}',
       delayMs: 250,
       errorRate: 0.15,
       failureStatusCode: 503,
@@ -93,6 +143,7 @@ describe('EndpointFormModal Component', () => {
 
     expect(screen.getByRole('heading', { name: /editar mock endpoint/i })).toBeInTheDocument();
     expect(screen.getByDisplayValue('Simular Carrito')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('itemsInCart')).toBeInTheDocument();
     expect(screen.getByText('250 ms')).toBeInTheDocument();
     expect(screen.getByText('15%')).toBeInTheDocument();
 
@@ -108,6 +159,7 @@ describe('EndpointFormModal Component', () => {
           delayMs: 250,
           errorRate: 0.15,
           failureStatusCode: 503,
+          stateUpdates: expect.stringContaining('"itemsInCart"'),
         })
       );
       expect(handleClose).toHaveBeenCalledTimes(1);
