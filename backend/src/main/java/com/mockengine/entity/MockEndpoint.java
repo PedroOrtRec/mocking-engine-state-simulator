@@ -53,6 +53,9 @@ public class MockEndpoint {
   @Column(name = "request_schema", columnDefinition = "TEXT")
   private String requestSchema; // JSON Schema para validar la petición
 
+  @Column(name = "state_updates", columnDefinition = "TEXT")
+  private String stateUpdates; // Mutaciones de estado en formato JSON (Opción 2)
+
   @Builder.Default
   @Column(name = "active", nullable = false)
   private Boolean active = true;

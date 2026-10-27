@@ -412,4 +412,146 @@ class StateManagementServiceTest {
         verify(ephemeralSessionRedisService).deleteGuestState("guest_123");
         verify(scenarioStateRepository, never()).deleteBySessionKey(anyString());
     }
+
+    // --- APPLY STATE MUTATIONS TESTS (Option 2) ---
+
+    @Test
+    @DisplayName("applyStateMutations: string nulo o en blanco devuelve el estado actual sin modificar")
+    void applyStateMutations_NullOrBlank_ReturnsCurrentState() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"balance\": 100}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        Map<String, Object> resultNull = stateManagementService.applyStateMutations("user:sess", null);
+        assertThat(resultNull).containsEntry("balance", 100);
+
+        Map<String, Object> resultBlank = stateManagementService.applyStateMutations("user:sess", "   ");
+        assertThat(resultBlank).containsEntry("balance", 100);
+
+        verify(scenarioStateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("applyStateMutations: asignación directa de primitivos y objetos anidados")
+    void applyStateMutations_DirectAssignment() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"theme\": \"light\"}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        String mutationsJson = "{\"theme\": \"dark\", \"count\": 5, \"config\": {\"debug\": true}}";
+        Map<String, Object> result = stateManagementService.applyStateMutations("user:sess", mutationsJson);
+
+        assertThat(result)
+                .containsEntry("theme", "dark")
+                .containsEntry("count", 5);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> configMap = (Map<String, Object>) result.get("config");
+        assertThat(configMap).containsEntry("debug", true);
+
+        verify(scenarioStateRepository).save(state);
+        assertThat(state.getStateJson()).contains("\"theme\":\"dark\"");
+    }
+
+    @Test
+    @DisplayName("applyStateMutations: operador atómico $set")
+    void applyStateMutations_AtomicSet() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"user\": \"alice\"}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        String mutationsJson = "{\"user\": {\"$set\": \"bob\"}}";
+        Map<String, Object> result = stateManagementService.applyStateMutations("user:sess", mutationsJson);
+
+        assertThat(result).containsEntry("user", "bob");
+    }
+
+    @Test
+    @DisplayName("applyStateMutations: operadores atómicos $inc y $dec con números enteros y decimales")
+    void applyStateMutations_AtomicIncAndDec() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"stock\": 10, \"balance\": 50.50}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        String mutationsJson = "{\"stock\": {\"$inc\": 5}, \"balance\": {\"$dec\": 20.25}, \"newCounter\": {\"$inc\": 1}}";
+        Map<String, Object> result = stateManagementService.applyStateMutations("user:sess", mutationsJson);
+
+        assertThat(result).containsEntry("stock", 15);
+        assertThat(result).containsEntry("balance", 30.25);
+        assertThat(result).containsEntry("newCounter", 1);
+    }
+
+    @Test
+    @DisplayName("applyStateMutations: operador atómico $toggle invierte booleanos")
+    void applyStateMutations_AtomicToggle() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"isLoggedIn\": true, \"flag\": false}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        String mutationsJson = "{\"isLoggedIn\": {\"$toggle\": true}, \"flag\": {\"$toggle\": true}, \"fresh\": {\"$toggle\": true}}";
+        Map<String, Object> result = stateManagementService.applyStateMutations("user:sess", mutationsJson);
+
+        assertThat(result).containsEntry("isLoggedIn", false);
+        assertThat(result).containsEntry("flag", true);
+        assertThat(result).containsEntry("fresh", true);
+    }
+
+    @Test
+    @DisplayName("applyStateMutations: operador atómico $push añade elementos a listas")
+    void applyStateMutations_AtomicPush() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"items\": [\"apple\"]}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        String mutationsJson = "{\"items\": {\"$push\": \"banana\"}, \"tags\": {\"$push\": \"vip\"}}";
+        Map<String, Object> result = stateManagementService.applyStateMutations("user:sess", mutationsJson);
+
+        assertThat(result.get("items")).asList().containsExactly("apple", "banana");
+        assertThat(result.get("tags")).asList().containsExactly("vip");
+    }
+
+    @Test
+    @DisplayName("applyStateMutations: operador atómico $unset elimina la propiedad y la persiste fuera del JSON")
+    void applyStateMutations_AtomicUnset() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"tempToken\": \"xyz123\", \"keepMe\": \"active\"}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        String mutationsJson = "{\"tempToken\": {\"$unset\": true}}";
+        Map<String, Object> result = stateManagementService.applyStateMutations("user:sess", mutationsJson);
+
+        assertThat(result)
+                .doesNotContainKey("tempToken")
+                .containsEntry("keepMe", "active");
+
+        assertThat(state.getStateJson()).doesNotContain("tempToken");
+        assertThat(state.getStateJson()).contains("\"keepMe\":\"active\"");
+    }
+
+    @Test
+    @DisplayName("applyStateMutations: para sesiones efímeras guest_* persiste en Redis")
+    void applyStateMutations_GuestSession_PersistsInRedis() {
+        when(ephemeralSessionRedisService.getGuestState("guest_abc"))
+                .thenReturn(Optional.of("{\"cart\": 1}"));
+
+        String mutationsJson = "{\"cart\": {\"$inc\": 2}}";
+        Map<String, Object> result = stateManagementService.applyStateMutations("guest_abc", mutationsJson);
+
+        assertThat(result).containsEntry("cart", 3);
+        verify(ephemeralSessionRedisService).saveGuestState(eq("guest_abc"), contains("\"cart\":3"));
+        verify(scenarioStateRepository, never()).save(any());
+    }
 }

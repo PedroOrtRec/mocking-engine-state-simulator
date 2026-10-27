@@ -46,5 +46,6 @@ public class MockEndpointDTO {
     private Integer failureStatusCode;
 
     private String requestSchema;
+    private String stateUpdates;
     private Boolean active;
 }

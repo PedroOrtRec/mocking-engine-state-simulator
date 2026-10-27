@@ -74,12 +74,23 @@ public class MockExecutionService {
                     "Simulación de fallo aleatorio del sistema (Chaos Engineering)");
         }
 
-        // 5. Cargar estado de sesión y evaluar la plantilla JSON
+        // 5. Cargar estado de sesión y aplicar mutaciones si existen
         Map<String, Object> currentState = stateManagementService.getState(sessionKey);
+        if (endpoint.getStateUpdates() != null && !endpoint.getStateUpdates().isBlank()) {
+            String evaluatedUpdates = jsonTemplateEngine.evaluateTemplate(
+                    endpoint.getStateUpdates(),
+                    match.getPathVariables(),
+                    currentState,
+                    requestBody
+            );
+            currentState = stateManagementService.applyStateMutations(sessionKey, evaluatedUpdates);
+        }
+
         String evaluatedBody = jsonTemplateEngine.evaluateTemplate(
                 endpoint.getResponseBody(), 
                 match.getPathVariables(), 
-                currentState
+                currentState,
+                requestBody
         );
 
         // 6. Preparar cabeceras HTTP de respuesta

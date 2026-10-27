@@ -13,6 +13,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class StateManagementService {
     public static final String DEFAULT_SESSION_KEY = "default";
     public static final int MAX_STATES_PER_USER = 5;
     private static final Set<String> RESERVED_NAMES = Set.of("default", "default-session", "guest");
+    private static final Set<String> ATOMIC_OPERATORS = Set.of("$set", "$inc", "$dec", "$toggle", "$push", "$unset");
 
     private final ScenarioStateRepository scenarioStateRepository;
     private final EphemeralSessionRedisService ephemeralSessionRedisService;
@@ -192,25 +194,105 @@ public class StateManagementService {
     }
 
     /**
-     * Actualiza una o más variables de estado para una sesión.
-     * Si es una sesión de invitado, actualiza en Redis con TTL de 24 horas; si no, en PostgreSQL.
+     * Actualiza una o más variables de estado para una sesión mediante fusión (putAll).
      */
     @Transactional
     public void updateState(String sessionKey, Map<String, Object> newValues) {
         Map<String, Object> currentState = getState(sessionKey);
         currentState.putAll(newValues);
+        saveState(sessionKey, currentState);
+    }
 
+    /**
+     * Aplica mutaciones de estado avanzadas (Opción 2: valores directos + operadores atómicos
+     * $set, $inc, $dec, $toggle, $push, $unset) y persiste el estado completo.
+     */
+    @Transactional
+    public Map<String, Object> applyStateMutations(String sessionKey, String evaluatedStateUpdatesJson) {
+        if (evaluatedStateUpdatesJson == null || evaluatedStateUpdatesJson.isBlank()) {
+            return getState(sessionKey);
+        }
+
+        Map<String, Object> mutations;
         try {
-            String json = objectMapper.writeValueAsString(currentState);
+            mutations = objectMapper.readValue(evaluatedStateUpdatesJson, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("No se pudo deserializar stateUpdates JSON [{}]: {}", evaluatedStateUpdatesJson, e.getMessage());
+            return getState(sessionKey);
+        }
+
+        if (mutations == null || mutations.isEmpty()) {
+            return getState(sessionKey);
+        }
+
+        Map<String, Object> currentState = new HashMap<>(getState(sessionKey));
+
+        for (Map.Entry<String, Object> entry : mutations.entrySet()) {
+            String key = entry.getKey();
+            Object rawSpec = entry.getValue();
+
+            if (rawSpec instanceof Map<?, ?> opMap && hasAtomicOperator(opMap)) {
+                if (opMap.containsKey("$set")) {
+                    currentState.put(key, opMap.get("$set"));
+                }
+                if (opMap.containsKey("$inc")) {
+                    Object incVal = opMap.get("$inc");
+                    currentState.put(key, applyNumericDelta(currentState.get(key), incVal, true));
+                }
+                if (opMap.containsKey("$dec")) {
+                    Object decVal = opMap.get("$dec");
+                    currentState.put(key, applyNumericDelta(currentState.get(key), decVal, false));
+                }
+                if (opMap.containsKey("$toggle")) {
+                    Object toggleSpec = opMap.get("$toggle");
+                    if (isTruthy(toggleSpec)) {
+                        boolean currentBool = isTruthy(currentState.get(key));
+                        currentState.put(key, !currentBool);
+                    }
+                }
+                if (opMap.containsKey("$push")) {
+                    Object pushItem = opMap.get("$push");
+                    Object existing = currentState.get(key);
+                    List<Object> list;
+                    if (existing instanceof List<?> l) {
+                        list = new ArrayList<>(l);
+                    } else {
+                        list = new ArrayList<>();
+                    }
+                    list.add(pushItem);
+                    currentState.put(key, list);
+                }
+                if (opMap.containsKey("$unset")) {
+                    Object unsetSpec = opMap.get("$unset");
+                    if (isTruthy(unsetSpec)) {
+                        currentState.remove(key);
+                    }
+                }
+            } else {
+                // Asignación directa de primitivo, lista, mapa anidado o null
+                currentState.put(key, rawSpec);
+            }
+        }
+
+        saveState(sessionKey, currentState);
+        return currentState;
+    }
+
+    /**
+     * Persiste el mapa completo de estado en Redis (para invitados) o PostgreSQL (para persistentes).
+     */
+    private void saveState(String sessionKey, Map<String, Object> state) {
+        try {
+            String json = objectMapper.writeValueAsString(state);
             if (isGuestSession(sessionKey)) {
                 ephemeralSessionRedisService.saveGuestState(sessionKey, json);
-                log.debug("Estado de invitado actualizado en Redis [{}]: {}", sessionKey, currentState);
+                log.debug("Estado de invitado actualizado en Redis [{}]: {}", sessionKey, state);
             } else if (isDefaultSession(sessionKey)) {
                 ScenarioState stateEntity = scenarioStateRepository.findBySessionKey(DEFAULT_SESSION_KEY)
                         .orElseGet(this::getOrCreateDefaultState);
                 stateEntity.setStateJson(json);
                 scenarioStateRepository.save(stateEntity);
-                log.debug("Estado del sistema actualizado en PostgreSQL: {}", currentState);
+                log.debug("Estado del sistema actualizado en PostgreSQL: {}", state);
             } else {
                 ScenarioState stateEntity = scenarioStateRepository.findBySessionKey(sessionKey)
                         .orElseGet(() -> {
@@ -229,11 +311,73 @@ public class StateManagementService {
                         });
                 stateEntity.setStateJson(json);
                 scenarioStateRepository.save(stateEntity);
-                log.debug("Estado persistente actualizado en PostgreSQL [{}]: {}", sessionKey, currentState);
+                log.debug("Estado persistente actualizado en PostgreSQL [{}]: {}", sessionKey, state);
             }
         } catch (Exception e) {
             log.error("Error al serializar el estado de sesión: {}", e.getMessage());
         }
+    }
+
+    private boolean hasAtomicOperator(Map<?, ?> map) {
+        for (Object k : map.keySet()) {
+            if (k instanceof String s && ATOMIC_OPERATORS.contains(s)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Number applyNumericDelta(Object currentVal, Object deltaVal, boolean isIncrement) {
+        double current = 0.0;
+        boolean isDouble = false;
+
+        if (currentVal instanceof Number n) {
+            current = n.doubleValue();
+            if (currentVal instanceof Double || currentVal instanceof Float) {
+                isDouble = true;
+            }
+        } else if (currentVal instanceof String s && !s.isBlank()) {
+            try {
+                current = Double.parseDouble(s);
+                if (s.contains(".")) {
+                    isDouble = true;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        double delta = 0.0;
+        if (deltaVal instanceof Number n) {
+            delta = n.doubleValue();
+            if (deltaVal instanceof Double || deltaVal instanceof Float) {
+                isDouble = true;
+            }
+        } else if (deltaVal instanceof String s && !s.isBlank()) {
+            try {
+                delta = Double.parseDouble(s);
+                if (s.contains(".")) {
+                    isDouble = true;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        double result = isIncrement ? (current + delta) : (current - delta);
+
+        if (!isDouble && result == Math.floor(result) && !Double.isInfinite(result)) {
+            long longVal = (long) result;
+            if (longVal >= Integer.MIN_VALUE && longVal <= Integer.MAX_VALUE) {
+                return (int) longVal;
+            }
+            return longVal;
+        }
+        return result;
+    }
+
+    private boolean isTruthy(Object val) {
+        if (val == null) return false;
+        if (val instanceof Boolean b) return b;
+        if (val instanceof Number n) return n.doubleValue() != 0.0;
+        String s = String.valueOf(val).trim();
+        return "true".equalsIgnoreCase(s) || "1".equals(s);
     }
 
     /**

@@ -76,7 +76,7 @@ class MockExecutionServiceTest {
         when(routeMatcherService.findMatch("GET", "/api/balance")).thenReturn(Optional.of(matchResult));
         when(networkSimulationService.shouldSimulateFailure(anyDouble())).thenReturn(false);
         when(stateManagementService.getState("sess-test-123")).thenReturn(Map.of());
-        when(jsonTemplateEngine.evaluateTemplate(any(), any(), any())).thenReturn("{\"balance\": 100}");
+        when(jsonTemplateEngine.evaluateTemplate(any(), any(), any(), any())).thenReturn("{\"balance\": 100}");
 
         ResponseEntity<?> response = executionService.executeMock("GET", "/api/balance", request, "{}");
 
@@ -94,5 +94,59 @@ class MockExecutionServiceTest {
         assertThat(savedDoc.getStatusCode()).isEqualTo(200);
         assertThat(savedDoc.getResponseBody()).isEqualTo("{\"balance\": 100}");
         assertThat(savedDoc.getRequestHeaders()).containsKey("X-Session-ID");
+    }
+
+    @Test
+    @DisplayName("Debe aplicar mutaciones de estado si el mock tiene configurado stateUpdates")
+    void executeMock_AppliesStateUpdatesWhenConfigured() {
+        MockEndpoint endpoint = MockEndpoint.builder()
+                .id(2L)
+                .name("Purchase Item")
+                .httpMethod("POST")
+                .pathPattern("/api/purchase")
+                .statusCode(200)
+                .stateUpdates("{\"balance\": {\"$inc\": -{{body.amount}}}}")
+                .responseBody("{\"newBalance\": {{state.balance}}}")
+                .ownerUsername("pedro")
+                .delayMs(0L)
+                .errorRate(0.0)
+                .build();
+
+        MatchResult matchResult = MatchResult.builder()
+                .endpoint(endpoint)
+                .pathVariables(Map.of())
+                .build();
+
+        when(request.getHeader("X-Session-ID")).thenReturn("sess-purchase-1");
+        when(routeMatcherService.findMatch("POST", "/api/purchase")).thenReturn(Optional.of(matchResult));
+        when(networkSimulationService.shouldSimulateFailure(anyDouble())).thenReturn(false);
+
+        Map<String, Object> initialState = Map.of("balance", 100);
+        Map<String, Object> mutatedState = Map.of("balance", 75);
+
+        when(stateManagementService.getState("sess-purchase-1")).thenReturn(initialState);
+        when(jsonTemplateEngine.evaluateTemplate(
+                eq(endpoint.getStateUpdates()),
+                eq(Map.of()),
+                eq(initialState),
+                eq("{\"amount\": 25}")
+        )).thenReturn("{\"balance\": {\"$inc\": -25}}");
+
+        when(stateManagementService.applyStateMutations("sess-purchase-1", "{\"balance\": {\"$inc\": -25}}"))
+                .thenReturn(mutatedState);
+
+        when(jsonTemplateEngine.evaluateTemplate(
+                eq(endpoint.getResponseBody()),
+                eq(Map.of()),
+                eq(mutatedState),
+                eq("{\"amount\": 25}")
+        )).thenReturn("{\"newBalance\": 75}");
+
+        ResponseEntity<?> response = executionService.executeMock("POST", "/api/purchase", request, "{\"amount\": 25}");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo("{\"newBalance\": 75}");
+
+        verify(stateManagementService).applyStateMutations("sess-purchase-1", "{\"balance\": {\"$inc\": -25}}");
     }
 }

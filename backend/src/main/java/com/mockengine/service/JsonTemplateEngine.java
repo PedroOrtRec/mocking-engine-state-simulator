@@ -1,5 +1,6 @@
 package com.mockengine.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,23 +21,37 @@ public class JsonTemplateEngine {
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{([a-zA-Z0-9_.]+)\\}\\}");
 
     /**
-     * Procesa una plantilla JSON sustituyendo placeholders por valores dinámicos.
+     * Procesa una plantilla JSON sustituyendo placeholders por valores dinámicos (retrocompatible).
      */
     public String evaluateTemplate(
             String templateJson,
             Map<String, String> pathVariables,
             Map<String, Object> sessionState
     ) {
+        return evaluateTemplate(templateJson, pathVariables, sessionState, null);
+    }
+
+    /**
+     * Procesa una plantilla JSON sustituyendo placeholders por valores dinámicos incluyendo el request body.
+     */
+    public String evaluateTemplate(
+            String templateJson,
+            Map<String, String> pathVariables,
+            Map<String, Object> sessionState,
+            String requestBody
+    ) {
         if (templateJson == null || templateJson.isBlank()) {
             return "{}";
         }
+
+        JsonNode bodyNode = parseBody(requestBody);
 
         Matcher matcher = PLACEHOLDER_PATTERN.matcher(templateJson);
         StringBuilder sb = new StringBuilder();
 
         while (matcher.find()) {
             String key = matcher.group(1);
-            String replacement = resolveValue(key, pathVariables, sessionState);
+            String replacement = resolveValue(key, pathVariables, sessionState, bodyNode);
             // Escapar barras y signos de dólar para appendReplacement
             matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
@@ -45,7 +60,12 @@ public class JsonTemplateEngine {
         return sb.toString();
     }
 
-    private String resolveValue(String key, Map<String, String> pathVars, Map<String, Object> state) {
+    private String resolveValue(
+            String key,
+            Map<String, String> pathVars,
+            Map<String, Object> state,
+            JsonNode bodyNode
+    ) {
         // 1. Generadores globales
         if ("uuid".equalsIgnoreCase(key)) {
             return UUID.randomUUID().toString();
@@ -70,16 +90,54 @@ public class JsonTemplateEngine {
             return val != null ? String.valueOf(val) : "null";
         }
 
+        // 4. Variables extraídas del cuerpo JSON de la petición: {{body.username}} o anidadas {{body.user.id}}
+        if (key.startsWith("body.")) {
+            if (bodyNode == null || bodyNode.isNull() || bodyNode.isMissingNode()) {
+                return "null";
+            }
+            String fieldPath = key.substring("body.".length());
+            String[] segments = fieldPath.split("\\.");
+            JsonNode current = bodyNode;
+            for (String segment : segments) {
+                if (current == null) {
+                    break;
+                }
+                current = current.get(segment);
+            }
+            if (current == null || current.isNull() || current.isMissingNode()) {
+                return "null";
+            }
+            if (current.isValueNode()) {
+                return current.asText();
+            }
+            return current.toString();
+        }
+
         return "{{" + key + "}}"; // Dejar intacto si no se reconoce
+    }
+
+    private JsonNode parseBody(String requestBody) {
+        if (requestBody == null || requestBody.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(requestBody);
+        } catch (Exception e) {
+            log.debug("Cuerpo de petición no es un JSON parseable: {}", e.getMessage());
+            return null;
+        }
     }
 
     /**
      * Valida si un string es un JSON sintácticamente correcto.
      */
     public boolean isValidJson(String jsonString) {
+        if (jsonString == null || jsonString.isBlank()) {
+            return false;
+        }
         try {
-            objectMapper.readTree(jsonString);
-            return true;
+            JsonNode node = objectMapper.readTree(jsonString);
+            return node != null && !node.isMissingNode();
         } catch (Exception e) {
             return false;
         }

@@ -71,6 +71,7 @@ public class MockEndpointAdminController {
                 .errorRate(dto.getErrorRate() != null ? dto.getErrorRate() : 0.0)
                 .failureStatusCode(dto.getFailureStatusCode() != null ? dto.getFailureStatusCode() : 500)
                 .requestSchema(dto.getRequestSchema())
+                .stateUpdates(dto.getStateUpdates())
                 .active(dto.getActive() != null ? dto.getActive() : true)
                 .ownerUsername(ownerUsername)
                 .ephemeral(ephemeral)
@@ -103,6 +104,7 @@ public class MockEndpointAdminController {
         existing.setErrorRate(dto.getErrorRate() != null ? dto.getErrorRate() : 0.0);
         existing.setFailureStatusCode(dto.getFailureStatusCode() != null ? dto.getFailureStatusCode() : 500);
         existing.setRequestSchema(dto.getRequestSchema());
+        existing.setStateUpdates(dto.getStateUpdates());
         existing.setActive(dto.getActive() != null ? dto.getActive() : true);
 
         return ResponseEntity.ok(mockRepository.save(existing));
