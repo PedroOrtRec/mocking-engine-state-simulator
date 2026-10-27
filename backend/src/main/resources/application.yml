@@ -1,6 +1,8 @@
 spring:
   application:
     name: mocking-engine-state-simulator
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
 
   # Habilitación de Virtual Threads de Java 21 (Project Loom)
   # Permite pausar peticiones de forma asíncrona sin bloquear el hilo del SO
@@ -10,9 +12,9 @@ spring:
 
   # Configuración del DataSource (PostgreSQL)
   datasource:
-    url: jdbc:postgresql://localhost:5432/mockengine
-    username: mockuser
-    password: mocksecret
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/mockengine_db}
+    username: ${SPRING_DATASOURCE_USERNAME:mockengine_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:mockengine_password}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
