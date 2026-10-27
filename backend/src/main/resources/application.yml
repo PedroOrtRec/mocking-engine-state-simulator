@@ -66,4 +66,8 @@ app:
     # Lee JWT_SECRET del entorno (.env o variable del sistema). Si no está definida, usa clave fallback para tests
     secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXYtb25seS1kby1ub3QtdXNlLWluLXByb2QtMjU2Yml0cw==}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  admin:
+    username: ${ADMIN_USERNAME:admin}
+    password: ${ADMIN_PASSWORD:admin123456}
+
 
