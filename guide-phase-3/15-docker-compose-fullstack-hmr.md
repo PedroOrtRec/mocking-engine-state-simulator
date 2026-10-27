@@ -88,7 +88,7 @@ services:
     working_dir: /app
     volumes:
       # Monta el código del backend en vivo:
-      - .:/app
+      - ./backend:/app
       # Cachea dependencias de Maven en el host para arranque instantáneo:
       - ~/.m2:/root/.m2
     ports:

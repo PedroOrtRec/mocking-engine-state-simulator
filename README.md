@@ -19,10 +19,10 @@ Construido sobre **Java 21**, **Spring Boot 3.3+**, **PostgreSQL**, **MongoDB**,
 # 1. Iniciar la infraestructura multi-servicio (PostgreSQL, MongoDB y Redis)
 docker compose up -d
 
-# 2. Compilar el proyecto y ejecutar los tests
-mvn test
+# 2. Compilar el backend y ejecutar los tests
+cd backend && mvn test
 
-# 3. Arrancar la aplicación
+# 3. Arrancar la aplicación backend
 mvn spring-boot:run
 ```
 
@@ -37,6 +37,15 @@ mvn spring-boot:run
   http://localhost:8080/swagger-ui.html
   ```
   *(Incluye botón de autenticación Bearer JWT para probar endpoints protegidos interactivamente)*.
+
+---
+
+## 📁 Estructura del Repositorio
+
+* `backend/`: API REST empresarial en Java 21 con Spring Boot 3.3+, JPA, MongoDB, Redis, JWT y OpenAPI.
+* `frontend/`: Single Page Application (SPA) en React 19, Vite 6, Tailwind CSS v4 y Vitest *(Fase 3)*.
+* `docker-compose.yml`: Orquestación multi-servicio en red común con hot-reload (HMR) y healthchecks.
+* `docs/`: Especificaciones técnicas de arquitectura y topologías de red.
 
 ---
 

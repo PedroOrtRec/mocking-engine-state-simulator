@@ -1,43 +1,120 @@
+version: '3.8'
+
 services:
+  # 1. Base de datos Relacional (PostgreSQL 16)
   postgres:
     image: postgres:16-alpine
-    container_name: mockengine-postgres
+    container_name: mockengine_postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: mockengine
-      POSTGRES_USER: mockuser
-      POSTGRES_PASSWORD: mocksecret
+      POSTGRES_DB: mockengine_db
+      POSTGRES_USER: mockengine_user
+      POSTGRES_PASSWORD: mockengine_password
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mockuser -d mockengine"]
+      test: ["CMD-SHELL", "pg_isready -U mockengine_user -d mockengine_db"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - mockengine_net
 
+  # 2. Base de datos NoSQL Documental (MongoDB 7.0)
   mongodb:
     image: mongo:7.0
-    container_name: mockengine-mongodb
+    container_name: mockengine_mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
       MONGO_INITDB_DATABASE: mockengine_logs
     volumes:
-      - mongo_data:/data/db
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mockengine_net
 
+  # 3. Base de datos en Memoria y Caché (Redis 7.2)
   redis:
     image: redis:7.2-alpine
-    container_name: mockengine-redis
+    container_name: mockengine_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mockengine_net
+
+  # 4. Backend (Spring Boot 3.3 con Java 21)
+  backend:
+    image: eclipse-temurin:21-jdk-alpine
+    container_name: mockengine_backend
+    working_dir: /app
+    volumes:
+      # Monta el código del backend en vivo:
+      - ./backend:/app
+      # Cachea dependencias de Maven en el host para arranque instantáneo:
+      - ~/.m2:/root/.m2
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/mockengine_db
+      - SPRING_DATASOURCE_USERNAME=mockengine_user
+      - SPRING_DATASOURCE_PASSWORD=mockengine_password
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/mockengine_logs
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+    command: ./mvnw spring-boot:run
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mockengine_net
+
+  # 5. Frontend (React 19 + Vite 6)
+  frontend:
+    image: node:20-alpine
+    container_name: mockengine_frontend
+    working_dir: /app
+    volumes:
+      # Monta el código fuente del frontend:
+      - ./frontend:/app
+      # Volumen anónimo crucial: evita sobreescribir node_modules del contenedor con los del host:
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+      - CHOKIDAR_USEPOLLING=true # Asegura detección de cambios de archivos en sistemas macOS/Windows
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+    networks:
+      - mockengine_net
 
 volumes:
-  postgres_data:
-  mongo_data:
-  redis_data:
+  pgdata:
+  mongodata:
+  redisdata:
+
+networks:
+  mockengine_net:
+    driver: bridge

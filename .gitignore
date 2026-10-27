@@ -40,3 +40,12 @@ Thumbs.db
 *.env
 application-local.yml
 application-local.properties
+
+### Node / Frontend ###
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+.eslintcache
+

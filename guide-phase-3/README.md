@@ -33,7 +33,7 @@ flowchart TD
     subgraph Host ["Máquina Anfitriona (Desarrollador / Navegador)"]
         Browser["Navegador Web (http://localhost:5173)"]
         SrcFront["Código Fuente ./frontend"]
-        SrcBack["Código Fuente ./backend (o raíz)"]
+        SrcBack["Código Fuente ./backend"]
     end
 
     subgraph DockerCompose ["Orquestación Docker Compose (Red Interna mockengine-net)"]
