@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin/states")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('USER', 'ADMIN', 'GUEST')")
 @Tag(name = "Gestión de Estados de Escenario", description = "CRUD de escenarios con estado 1:N aislados por usuario y control de cuotas")
 @Slf4j
 public class ScenarioStateAdminController {
