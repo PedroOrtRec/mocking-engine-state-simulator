@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { LoginPage } from './LoginPage';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -31,6 +32,7 @@ describe('LoginPage Component', () => {
   });
 
   it('debe invocar guestLogin al pulsar el botón de invitado', async () => {
+    const user = userEvent.setup();
     vi.mocked(authApi.guestLogin).mockResolvedValueOnce({
       token: 'fake-guest-jwt',
       username: 'guest_1234',
@@ -45,8 +47,10 @@ describe('LoginPage Component', () => {
     );
 
     const guestButton = screen.getByRole('button', { name: /entrar como invitado/i });
-    fireEvent.click(guestButton);
+    await user.click(guestButton);
 
-    expect(authApi.guestLogin).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(authApi.guestLogin).toHaveBeenCalledTimes(1);
+    });
   });
 });
