@@ -49,3 +49,7 @@ dist-ssr/
 .npm
 .eslintcache
 
+### Agent / Workflow Artifacts ###
+odd/
+
+
