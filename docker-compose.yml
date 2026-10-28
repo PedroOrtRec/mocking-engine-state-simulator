@@ -89,9 +89,9 @@ services:
     networks:
       - mockengine_net
 
-  # 5. Frontend (React 19 + Vite 6)
+  # 5. Frontend (React 19 + Vite)
   frontend:
-    image: node:20-alpine
+    image: node:24-alpine
     container_name: mockengine_frontend
     working_dir: /app
     volumes:
@@ -104,7 +104,8 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8080
       - CHOKIDAR_USEPOLLING=true # Asegura detección de cambios de archivos en sistemas macOS/Windows
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+      - CI=true
+    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm run dev --host 0.0.0.0"
     depends_on:
       - backend
     networks:
