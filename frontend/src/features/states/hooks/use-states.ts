@@ -39,6 +39,13 @@ export function useStates() {
     },
   });
 
+  const resetMutation = useMutation({
+    mutationFn: (id: number) => statesApi.reset(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: STATES_QUERY_KEY });
+    },
+  });
+
   return {
     states: statesQuery.data ?? [],
     isLoading: statesQuery.isLoading,
@@ -50,5 +57,7 @@ export function useStates() {
     isUpdating: updateMutation.isPending,
     deleteState: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    resetState: resetMutation.mutateAsync,
+    isResetting: resetMutation.isPending,
   };
 }

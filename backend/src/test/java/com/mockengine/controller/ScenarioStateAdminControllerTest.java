@@ -212,4 +212,27 @@ class ScenarioStateAdminControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error_code").value("ACCESS_DENIED"));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/states/{id}/reset debe restaurar el estado a sus valores originales y retornar 200 OK")
+    void resetState_Success() throws Exception {
+        ScenarioStateDTO restored = ScenarioStateDTO.builder()
+                .id(2L)
+                .name("carrito")
+                .ownerUsername("pedro")
+                .sessionKey("pedro:carrito")
+                .stateJson("{\"items\": 2}")
+                .initialStateJson("{\"items\": 2}")
+                .system(false)
+                .build();
+
+        when(stateManagementService.resetStateById(2L, "pedro")).thenReturn(restored);
+
+        mockMvc.perform(post("/api/v1/admin/states/2/reset").principal(principal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stateJson").value("{\"items\": 2}"))
+                .andExpect(jsonPath("$.initialStateJson").value("{\"items\": 2}"));
+
+        verify(stateManagementService).resetStateById(2L, "pedro");
+    }
 }

@@ -10,6 +10,7 @@ vi.mock('../api/states-api', () => ({
     getAll: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    reset: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -152,6 +153,33 @@ describe('SessionStateManager Component', () => {
         stateJson: expect.any(String),
       });
       expect(handleSelect).toHaveBeenCalledWith('nuevo_flujo_key');
+    });
+  });
+
+  it('debe restaurar los valores originales del estado al pulsar Restaurar original', async () => {
+    const user = userEvent.setup();
+    vi.mocked(statesApi.reset).mockResolvedValueOnce({
+      ...mockStates[1],
+      stateJson: '{"counter": 0}',
+      initialStateJson: '{"counter": 0}',
+    });
+
+    renderWithClient(
+      <SessionStateManager
+        selectedSessionKey="test_session_key"
+        onSelectSessionKey={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('test_session')).toBeInTheDocument();
+    });
+
+    const resetBtn = screen.getByRole('button', { name: /restaurar original/i });
+    await user.click(resetBtn);
+
+    await waitFor(() => {
+      expect(statesApi.reset).toHaveBeenCalledWith(2);
     });
   });
 });

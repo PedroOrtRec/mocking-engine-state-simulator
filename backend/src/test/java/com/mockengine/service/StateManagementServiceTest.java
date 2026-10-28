@@ -208,6 +208,30 @@ class StateManagementServiceTest {
         assertThat(updated.getName()).isEqualTo("nuevo-nombre");
         assertThat(updated.getSessionKey()).isEqualTo("pedro:nuevo-nombre");
         assertThat(updated.getStateJson()).isEqualTo("{\"updated\": true}");
+        assertThat(updated.getInitialStateJson()).isEqualTo("{\"updated\": true}");
+    }
+
+    @Test
+    @DisplayName("resetStateById: restaura stateJson a initialStateJson deshaciendo mutaciones de ejecución")
+    void resetStateById_RestoresInitialStateJson() {
+        ScenarioState mutatedState = ScenarioState.builder()
+                .id(5L)
+                .name("mi-sesion")
+                .ownerUsername("pedro")
+                .sessionKey("pedro:mi-sesion")
+                .initialStateJson("{\"balance\": 100, \"theme\": \"dark\"}")
+                .stateJson("{\"balance\": 250, \"theme\": \"light\", \"extra\": true}")
+                .system(false)
+                .build();
+
+        when(scenarioStateRepository.findById(5L)).thenReturn(Optional.of(mutatedState));
+        when(scenarioStateRepository.save(any(ScenarioState.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ScenarioStateDTO restored = stateManagementService.resetStateById(5L, "pedro");
+
+        assertThat(restored.getStateJson()).isEqualTo("{\"balance\": 100, \"theme\": \"dark\"}");
+        assertThat(restored.getInitialStateJson()).isEqualTo("{\"balance\": 100, \"theme\": \"dark\"}");
+        verify(scenarioStateRepository).save(mutatedState);
     }
 
     @Test

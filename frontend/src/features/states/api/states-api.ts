@@ -6,6 +6,7 @@ export interface ScenarioState {
   ownerUsername: string;
   sessionKey: string;
   stateJson: string;
+  initialStateJson?: string;
   system: boolean;
   lastAccessedAt?: string;
 }
@@ -43,5 +44,10 @@ export const statesApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/api/v1/admin/states/${id}`);
+  },
+
+  reset: async (id: number): Promise<ScenarioState> => {
+    const res = await apiClient.post<ScenarioState>(`/api/v1/admin/states/${id}/reset`);
+    return res.data;
   },
 };

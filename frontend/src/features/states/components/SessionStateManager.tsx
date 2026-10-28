@@ -33,8 +33,18 @@ export function SessionStateManager({
   selectedSessionKey,
   onSelectSessionKey,
 }: SessionStateManagerProps) {
-  const { states, isLoading, createState, updateState, deleteState, isUpdating, isCreating, isDeleting } =
-    useStates();
+  const {
+    states,
+    isLoading,
+    createState,
+    updateState,
+    deleteState,
+    resetState,
+    isUpdating,
+    isCreating,
+    isDeleting,
+    isResetting,
+  } = useStates();
 
   const [copiedKey, setCopiedKey] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -133,29 +143,20 @@ export function SessionStateManager({
 
   const handleResetJson = async () => {
     if (!activeState) return;
-    const emptyJson = '{}';
     setJsonValidationError(null);
 
-    if (!activeState.system) {
-      await updateState({
-        id: activeState.id,
-        payload: { stateJson: emptyJson },
-      });
+    try {
+      await resetState(activeState.id);
       setEditJsonState((prev) => {
         const next = { ...prev };
         delete next[activeState.sessionKey];
         return next;
       });
-      setSaveSuccessMessage('Estado reiniciado a {}');
+      setSaveSuccessMessage('Estado restaurado a sus valores originales');
       setTimeout(() => setSaveSuccessMessage(null), 2500);
-    } else {
-      setEditJsonState((prev) => ({
-        ...prev,
-        [activeState.sessionKey]: {
-          draft: emptyJson,
-          baseServerJson: activeState.stateJson,
-        },
-      }));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al restaurar el estado';
+      setJsonValidationError(message);
     }
   };
 
@@ -356,12 +357,12 @@ export function SessionStateManager({
                 <button
                   type="button"
                   onClick={handleResetJson}
-                  disabled={isUpdating}
+                  disabled={isUpdating || isResetting}
                   className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 rounded border border-slate-700 transition-colors"
-                  title="Reiniciar a {}"
+                  title="Restaurar el estado a sus valores originales guardados"
                 >
                   <RotateCcw className="h-3 w-3 text-slate-400" />
-                  Reiniciar ({'{}'})
+                  Restaurar original
                 </button>
               </div>
             </div>

@@ -58,11 +58,15 @@ public class StateManagementService {
 
         // 4. Construcción con namespace único: "usuario:nombre-estado"
         String sessionKey = ownerUsername + ":" + stateName;
+        String initialJson = request.getStateJson() != null && !request.getStateJson().isBlank()
+                ? request.getStateJson()
+                : "{}";
         ScenarioState state = ScenarioState.builder()
                 .name(stateName)
                 .ownerUsername(ownerUsername)
                 .sessionKey(sessionKey)
-                .stateJson(request.getStateJson() != null && !request.getStateJson().isBlank() ? request.getStateJson() : "{}")
+                .stateJson(initialJson)
+                .initialStateJson(initialJson)
                 .system(false)
                 .build();
 
@@ -127,6 +131,31 @@ public class StateManagementService {
 
         if (request.getStateJson() != null) {
             state.setStateJson(request.getStateJson());
+            state.setInitialStateJson(request.getStateJson());
+        }
+
+        return ScenarioStateDTO.fromEntity(scenarioStateRepository.save(state));
+    }
+
+    /**
+     * Restaura un estado por su id a su snapshot inicial (initialStateJson), deshaciendo las mutaciones
+     * provocadas por ejecuciones de mocks sin destruir el estado original.
+     */
+    @Transactional
+    public ScenarioStateDTO resetStateById(Long id, String ownerUsername) {
+        ScenarioState state = scenarioStateRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Estado no encontrado con id: " + id));
+
+        if (!state.isSystem() && !state.getOwnerUsername().equals(ownerUsername)) {
+            throw new AccessDeniedException("No tienes permiso para reiniciar este estado");
+        }
+
+        String baseline = (state.getInitialStateJson() != null && !state.getInitialStateJson().isBlank())
+                ? state.getInitialStateJson()
+                : "{}";
+        state.setStateJson(baseline);
+        if (state.getInitialStateJson() == null || state.getInitialStateJson().isBlank()) {
+            state.setInitialStateJson(baseline);
         }
 
         return ScenarioStateDTO.fromEntity(scenarioStateRepository.save(state));
@@ -163,6 +192,7 @@ public class StateManagementService {
                                 .ownerUsername("system")
                                 .sessionKey(DEFAULT_SESSION_KEY)
                                 .stateJson("{}")
+                                .initialStateJson("{}")
                                 .system(true)
                                 .build()
                 ));

@@ -68,6 +68,18 @@ public class ScenarioStateAdminController {
         return ResponseEntity.ok(updated);
     }
 
+    @Operation(summary = "Reiniciar estado a sus valores originales", description = "Restaura el JSON del estado a los valores guardados inicialmente o en el último guardado manual")
+    @PostMapping("/{id}/reset")
+    public ResponseEntity<ScenarioStateDTO> resetState(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String username = authentication != null ? authentication.getName() : "anonymous";
+        log.info("Reiniciando estado id: {} a sus valores originales para usuario: {}", id, username);
+        ScenarioStateDTO restored = stateManagementService.resetStateById(id, username);
+        return ResponseEntity.ok(restored);
+    }
+
     @Operation(summary = "Eliminar estado", description = "Elimina un estado propio (el estado del sistema no puede eliminarse)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteState(@PathVariable Long id, Authentication authentication) {

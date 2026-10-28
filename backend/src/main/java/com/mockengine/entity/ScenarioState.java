@@ -37,6 +37,10 @@ public class ScenarioState {
     private String stateJson = "{}"; // Payload de variables de estado JSON
 
     @Builder.Default
+    @Column(name = "initial_state_json", columnDefinition = "TEXT")
+    private String initialStateJson = "{}"; // Snapshot base guardado manualmente para restaurar con Reset
+
+    @Builder.Default
     @Column(name = "is_system", nullable = false)
     private boolean system = false; // true para el estado "default" del sistema
 
