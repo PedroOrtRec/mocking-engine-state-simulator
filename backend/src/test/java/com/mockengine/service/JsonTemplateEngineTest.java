@@ -56,6 +56,19 @@ class JsonTemplateEngineTest {
     }
 
     @Test
+    @DisplayName("evaluateTemplate: preserva tipos nativos JSON (número, booleano, objeto, array) cuando el placeholder está entrecomillado")
+    void evaluateTemplate_PreservesNativeJsonTypesForQuotedPlaceholders() {
+        String template = "{\"age\": \"{{body.age}}\", \"vip\": \"{{body.vip}}\", \"tags\": \"{{body.tags}}\", \"balance\": \"{{state.balance}}\", \"name\": \"{{body.name}}\"}";
+        String requestBody = "{\"age\": 28, \"vip\": true, \"tags\": [\"gold\", \"early\"], \"name\": \"Ana\"}";
+        Map<String, Object> state = Map.of("balance", 150.75);
+
+        String result = engine.evaluateTemplate(template, Map.of(), state, requestBody);
+
+        assertThat(result).isEqualTo("{\"age\": 28, \"vip\": true, \"tags\": [\"gold\",\"early\"], \"balance\": 150.75, \"name\": \"Ana\"}");
+        assertThat(engine.isValidJson(result)).isTrue();
+    }
+
+    @Test
     @DisplayName("isValidJson: valida sintaxis JSON correctamente")
     void isValidJson_Validation() {
         assertThat(engine.isValidJson("{\"ok\": true}")).isTrue();

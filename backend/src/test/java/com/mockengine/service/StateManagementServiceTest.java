@@ -554,4 +554,33 @@ class StateManagementServiceTest {
         verify(ephemeralSessionRedisService).saveGuestState(eq("guest_abc"), contains("\"cart\":3"));
         verify(scenarioStateRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("applyStateMutations: coerciona tipos explícitos ($type: number, boolean, json) en $set y $push")
+    void applyStateMutations_ExplicitTypeCoercion() {
+        ScenarioState state = ScenarioState.builder()
+                .sessionKey("user:sess")
+                .stateJson("{\"ids\": [10]}")
+                .build();
+        when(scenarioStateRepository.findBySessionKey("user:sess")).thenReturn(Optional.of(state));
+
+        String mutationsJson = """
+                {
+                  "lastOrderId": {"$set": "42", "$type": "number"},
+                  "isVerified": {"$set": "true", "$type": "boolean"},
+                  "metadata": {"$set": "{\\"tier\\":\\"gold\\"}", "$type": "json"},
+                  "ids": {"$push": "99", "$type": "number"}
+                }
+                """;
+
+        Map<String, Object> result = stateManagementService.applyStateMutations("user:sess", mutationsJson);
+
+        assertThat(result)
+                .containsEntry("lastOrderId", 42)
+                .containsEntry("isVerified", true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> metadata = (Map<String, Object>) result.get("metadata");
+        assertThat(metadata).containsEntry("tier", "gold");
+        assertThat(result.get("ids")).asList().containsExactly(10, 99);
+    }
 }

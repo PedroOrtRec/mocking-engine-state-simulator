@@ -232,8 +232,9 @@ public class StateManagementService {
             Object rawSpec = entry.getValue();
 
             if (rawSpec instanceof Map<?, ?> opMap && hasAtomicOperator(opMap)) {
+                Object explicitType = opMap.get("$type");
                 if (opMap.containsKey("$set")) {
-                    currentState.put(key, opMap.get("$set"));
+                    currentState.put(key, coerceByType(opMap.get("$set"), explicitType));
                 }
                 if (opMap.containsKey("$inc")) {
                     Object incVal = opMap.get("$inc");
@@ -251,7 +252,7 @@ public class StateManagementService {
                     }
                 }
                 if (opMap.containsKey("$push")) {
-                    Object pushItem = opMap.get("$push");
+                    Object pushItem = coerceByType(opMap.get("$push"), explicitType);
                     Object existing = currentState.get(key);
                     List<Object> list;
                     if (existing instanceof List<?> l) {
@@ -370,6 +371,46 @@ public class StateManagementService {
             return longVal;
         }
         return result;
+    }
+
+    private Object coerceByType(Object rawVal, Object typeObj) {
+        if (rawVal == null || !(typeObj instanceof String typeStr) || typeStr.isBlank()) {
+            return rawVal;
+        }
+        String normalizedType = typeStr.trim().toLowerCase();
+        return switch (normalizedType) {
+            case "number" -> {
+                if (rawVal instanceof Number) {
+                    yield rawVal;
+                }
+                String s = String.valueOf(rawVal).trim();
+                try {
+                    if (s.contains(".")) {
+                        yield Double.parseDouble(s);
+                    }
+                    long longVal = Long.parseLong(s);
+                    if (longVal >= Integer.MIN_VALUE && longVal <= Integer.MAX_VALUE) {
+                        yield (int) longVal;
+                    }
+                    yield longVal;
+                } catch (NumberFormatException e) {
+                    yield rawVal;
+                }
+            }
+            case "boolean" -> isTruthy(rawVal);
+            case "json" -> {
+                if (rawVal instanceof String s && !s.isBlank()) {
+                    try {
+                        yield objectMapper.readValue(s, Object.class);
+                    } catch (Exception e) {
+                        yield rawVal;
+                    }
+                }
+                yield rawVal;
+            }
+            case "string" -> String.valueOf(rawVal);
+            default -> rawVal;
+        };
     }
 
     private boolean isTruthy(Object val) {
