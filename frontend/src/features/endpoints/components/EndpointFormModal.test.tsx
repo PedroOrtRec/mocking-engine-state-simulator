@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EndpointFormModal } from './EndpointFormModal';
 import { endpointsApi, type MockEndpoint } from '../api/endpoints-api';
+import { STATES_QUERY_KEY } from '@/features/states/hooks/use-states';
+import type { ScenarioState } from '@/features/states/api/states-api';
 
 vi.mock('../api/endpoints-api', () => ({
   endpointsApi: {
@@ -203,6 +205,47 @@ describe('EndpointFormModal Component', () => {
 
     const valInput = screen.getByLabelText(/^Valor 1$/i) as HTMLInputElement;
     expect(valInput.value).toBe('{{body.amount}}');
+
+    const valTypeSelect = screen.getByLabelText(/^Tipo de valor 1$/i) as HTMLSelectElement;
+    expect(valTypeSelect.value).toBe('number');
+  });
+
+  it('debe mostrar un selector (<select>) con las propiedades del estado de la sesión cuando existen', async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const mockStates: ScenarioState[] = [
+      {
+        id: 3,
+        name: 'pruebaestado',
+        ownerUsername: 'admin',
+        sessionKey: 'admin:pruebaestado',
+        system: false,
+        stateJson: '{"theme":"dark","count":1}',
+      },
+    ];
+    queryClient.setQueryData(STATES_QUERY_KEY, mockStates);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EndpointFormModal
+          isOpen={true}
+          onClose={vi.fn()}
+          activeSessionKey="admin:pruebaestado"
+        />
+      </QueryClientProvider>
+    );
+
+    await user.click(screen.getByRole('button', { name: /añadir regla de estado/i }));
+
+    const propSelect = screen.getByRole('combobox', { name: /^Propiedad 1$/i }) as HTMLSelectElement;
+    expect(propSelect.value).toBe('theme');
+
+    // Al seleccionar 'count', debe cambiar también el Tipo de valor a 'number'
+    await user.selectOptions(propSelect, 'count');
+    expect(propSelect.value).toBe('count');
 
     const valTypeSelect = screen.getByLabelText(/^Tipo de valor 1$/i) as HTMLSelectElement;
     expect(valTypeSelect.value).toBe('number');

@@ -20,6 +20,15 @@ interface SessionStateManagerProps {
   onSelectSessionKey: (sessionKey: string) => void;
 }
 
+function formatPrettyJson(raw?: string): string {
+  if (!raw || !raw.trim()) return '{}';
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
 export function SessionStateManager({
   selectedSessionKey,
   onSelectSessionKey,
@@ -36,8 +45,10 @@ export function SessionStateManager({
   const newSessionNameId = useId();
   const newSessionJsonId = useId();
 
-  // Local JSON buffer for editing
-  const [editJsonState, setEditJsonState] = useState<{ [sessionKey: string]: string }>({});
+  // Local JSON buffer for editing (tracks baseServerJson to detect external mutations from mock executions)
+  const [editJsonState, setEditJsonState] = useState<{
+    [sessionKey: string]: { draft: string; baseServerJson: string };
+  }>({});
   const [jsonValidationError, setJsonValidationError] = useState<string | null>(null);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
@@ -45,10 +56,15 @@ export function SessionStateManager({
   const activeState: ScenarioState | undefined =
     states.find((s) => s.sessionKey === selectedSessionKey) ?? states[0];
 
-  const currentJsonValue =
-    activeState && editJsonState[activeState.sessionKey] !== undefined
-      ? editJsonState[activeState.sessionKey]
-      : activeState?.stateJson ?? '{}';
+  const activeSessionEntry = activeState ? editJsonState[activeState.sessionKey] : undefined;
+  const hasUnsavedLocalDraft =
+    activeState !== undefined &&
+    activeSessionEntry !== undefined &&
+    activeSessionEntry.baseServerJson === activeState.stateJson;
+
+  const currentJsonValue = hasUnsavedLocalDraft
+    ? activeSessionEntry.draft
+    : formatPrettyJson(activeState?.stateJson);
 
   const handleCopyKey = (key: string) => {
     navigator.clipboard.writeText(key);
@@ -58,7 +74,13 @@ export function SessionStateManager({
 
   const handleJsonChange = (val: string) => {
     if (!activeState) return;
-    setEditJsonState((prev) => ({ ...prev, [activeState.sessionKey]: val }));
+    setEditJsonState((prev) => ({
+      ...prev,
+      [activeState.sessionKey]: {
+        draft: val,
+        baseServerJson: activeState.stateJson,
+      },
+    }));
     try {
       JSON.parse(val);
       setJsonValidationError(null);
@@ -73,7 +95,13 @@ export function SessionStateManager({
       const parsed = JSON.parse(currentJsonValue);
       const formatted = JSON.stringify(parsed, null, 2);
       if (activeState) {
-        setEditJsonState((prev) => ({ ...prev, [activeState.sessionKey]: formatted }));
+        setEditJsonState((prev) => ({
+          ...prev,
+          [activeState.sessionKey]: {
+            draft: formatted,
+            baseServerJson: activeState.stateJson,
+          },
+        }));
       }
       setJsonValidationError(null);
     } catch {
@@ -90,6 +118,11 @@ export function SessionStateManager({
         id: activeState.id,
         payload: { stateJson: currentJsonValue },
       });
+      setEditJsonState((prev) => {
+        const next = { ...prev };
+        delete next[activeState.sessionKey];
+        return next;
+      });
       setSaveSuccessMessage('¡Estado guardado correctamente!');
       setTimeout(() => setSaveSuccessMessage(null), 2500);
     } catch (err: unknown) {
@@ -101,7 +134,6 @@ export function SessionStateManager({
   const handleResetJson = async () => {
     if (!activeState) return;
     const emptyJson = '{}';
-    setEditJsonState((prev) => ({ ...prev, [activeState.sessionKey]: emptyJson }));
     setJsonValidationError(null);
 
     if (!activeState.system) {
@@ -109,8 +141,21 @@ export function SessionStateManager({
         id: activeState.id,
         payload: { stateJson: emptyJson },
       });
+      setEditJsonState((prev) => {
+        const next = { ...prev };
+        delete next[activeState.sessionKey];
+        return next;
+      });
       setSaveSuccessMessage('Estado reiniciado a {}');
       setTimeout(() => setSaveSuccessMessage(null), 2500);
+    } else {
+      setEditJsonState((prev) => ({
+        ...prev,
+        [activeState.sessionKey]: {
+          draft: emptyJson,
+          baseServerJson: activeState.stateJson,
+        },
+      }));
     }
   };
 

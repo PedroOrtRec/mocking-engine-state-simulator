@@ -9,6 +9,7 @@ export function useStates() {
   const statesQuery = useQuery({
     queryKey: STATES_QUERY_KEY,
     queryFn: statesApi.getAll,
+    refetchInterval: 3000,
   });
 
   const createMutation = useMutation({

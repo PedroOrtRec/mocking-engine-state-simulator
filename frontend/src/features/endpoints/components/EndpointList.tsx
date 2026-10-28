@@ -197,6 +197,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         initialData={editingEndpoint}
+        activeSessionKey={activeSessionKey}
       />
     </div>
   );

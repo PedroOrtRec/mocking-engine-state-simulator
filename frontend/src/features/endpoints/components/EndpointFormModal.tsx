@@ -11,11 +11,15 @@ import {
   parseJsonToRules,
   extractPathParams,
   extractSchemaFields,
+  extractStateProperties,
   isTemplatePlaceholder,
   type StateMutationRule,
   type StateMutationOp,
   type StateValueType,
+  type StatePropertyHint,
 } from '../utils/mutation-rules';
+import { STATES_QUERY_KEY } from '@/features/states/hooks/use-states';
+import type { ScenarioState } from '@/features/states/api/states-api';
 import {
   Wifi,
   Signal,
@@ -55,9 +59,10 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   initialData?: MockEndpoint | null;
+  activeSessionKey?: string;
 }
 
-export function EndpointFormModal({ isOpen, onClose, initialData }: Props) {
+export function EndpointFormModal({ isOpen, onClose, initialData, activeSessionKey }: Props) {
   if (!isOpen) return null;
 
   return (
@@ -67,6 +72,7 @@ export function EndpointFormModal({ isOpen, onClose, initialData }: Props) {
           key={initialData ? `edit-${initialData.id}` : 'create'}
           initialData={initialData}
           onClose={onClose}
+          activeSessionKey={activeSessionKey}
         />
       </div>
     </div>
@@ -76,9 +82,10 @@ export function EndpointFormModal({ isOpen, onClose, initialData }: Props) {
 interface ContentProps {
   initialData?: MockEndpoint | null;
   onClose: () => void;
+  activeSessionKey?: string;
 }
 
-function EndpointFormContent({ initialData, onClose }: ContentProps) {
+function EndpointFormContent({ initialData, onClose, activeSessionKey }: ContentProps) {
   const isEditing = !!initialData;
   const queryClient = useQueryClient();
 
@@ -179,15 +186,39 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
     }
   };
 
+  // Extract properties from the active session state (and any other user states in cache)
+  const cachedStates = queryClient.getQueryData<ScenarioState[]>(STATES_QUERY_KEY) ?? [];
+  const availableStateProperties: StatePropertyHint[] = (() => {
+    const seen = new Set<string>();
+    const list: StatePropertyHint[] = [];
+    const activeStateObj = cachedStates.find((s) => s.sessionKey === activeSessionKey);
+    const orderedStates = activeStateObj
+      ? [activeStateObj, ...cachedStates.filter((s) => s.sessionKey !== activeSessionKey)]
+      : cachedStates;
+
+    for (const st of orderedStates) {
+      for (const prop of extractStateProperties(st.stateJson)) {
+        if (!seen.has(prop.name)) {
+          seen.add(prop.name);
+          list.push(prop);
+        }
+      }
+    }
+    return list;
+  })();
+
+  const [customPropertyIds, setCustomPropertyIds] = useState<{ [ruleId: string]: boolean }>({});
+
   // State mutation rules handlers
   const handleAddRule = () => {
+    const defaultProp = availableStateProperties[0];
     setRules((prev) => [
       ...prev,
       {
         id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        property: '',
+        property: defaultProp ? defaultProp.name : '',
         op: 'set',
-        valueType: 'string',
+        valueType: defaultProp ? defaultProp.valueType : 'string',
         value: '',
       },
     ]);
@@ -450,19 +481,77 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
                     className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-2"
                   >
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      {/* Propiedad */}
+                      {/* Propiedad (Selector de campos del estado o texto libre) */}
                       <div className="w-full sm:w-1/4">
                         <label htmlFor={`rule-prop-${rule.id}`} className="sr-only">
                           Propiedad {idx + 1}
                         </label>
-                        <input
-                          id={`rule-prop-${rule.id}`}
-                          type="text"
-                          value={rule.property}
-                          onChange={(e) => handleUpdateRule(rule.id, { property: e.target.value })}
-                          placeholder="Propiedad (ej. balance)"
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
-                        />
+                        {availableStateProperties.length > 0 && !customPropertyIds[rule.id] ? (
+                          <select
+                            id={`rule-prop-${rule.id}`}
+                            value={rule.property}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '__custom__') {
+                                setCustomPropertyIds((prev) => ({ ...prev, [rule.id]: true }));
+                                handleUpdateRule(rule.id, { property: '' });
+                                return;
+                              }
+                              const hint = availableStateProperties.find((p) => p.name === val);
+                              handleUpdateRule(rule.id, {
+                                property: val,
+                                valueType:
+                                  hint && showValueType ? hint.valueType : rule.valueType,
+                              });
+                            }}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white font-mono focus:outline-none focus:border-indigo-500 text-xs"
+                          >
+                            <option value="" disabled>
+                              Propiedad del estado...
+                            </option>
+                            {availableStateProperties.map((prop) => (
+                              <option key={prop.name} value={prop.name}>
+                                {prop.name} ({prop.valueType})
+                              </option>
+                            ))}
+                            {rule.property &&
+                              !availableStateProperties.some((p) => p.name === rule.property) && (
+                                <option value={rule.property}>{rule.property}</option>
+                              )}
+                            <option value="__custom__">+ Nueva propiedad...</option>
+                          </select>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <input
+                              id={`rule-prop-${rule.id}`}
+                              type="text"
+                              value={rule.property}
+                              onChange={(e) =>
+                                handleUpdateRule(rule.id, { property: e.target.value })
+                              }
+                              placeholder="Propiedad (ej. balance)"
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
+                            />
+                            {availableStateProperties.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomPropertyIds((prev) => ({ ...prev, [rule.id]: false }));
+                                  if (!rule.property && availableStateProperties[0]) {
+                                    handleUpdateRule(rule.id, {
+                                      property: availableStateProperties[0].name,
+                                      valueType: availableStateProperties[0].valueType,
+                                    });
+                                  }
+                                }}
+                                className="px-1.5 py-1 bg-slate-800 hover:bg-slate-700 text-[10px] text-indigo-300 rounded shrink-0"
+                                title="Elegir propiedad existente del estado"
+                              >
+                                Lista
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Operación */}

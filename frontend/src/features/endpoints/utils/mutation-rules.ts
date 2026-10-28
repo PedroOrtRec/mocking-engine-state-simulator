@@ -14,6 +14,11 @@ export interface SchemaFieldHint {
   valueType: StateValueType;
 }
 
+export interface StatePropertyHint {
+  name: string;
+  valueType: StateValueType;
+}
+
 const PLACEHOLDER_REGEX = /\{\{[a-zA-Z0-9_.]+\}\}/;
 const VALID_VALUE_TYPES = new Set<StateValueType>(['string', 'number', 'boolean', 'json']);
 
@@ -120,6 +125,27 @@ function formatVal(v: unknown): { valueType: StateValueType; value: string } {
     return { valueType: 'json', value: JSON.stringify(v) };
   }
   return { valueType: 'string', value: String(v ?? '') };
+}
+
+/**
+ * Extrae las propiedades de primer nivel presentes en el JSON del estado de sesión junto con su tipo actual.
+ */
+export function extractStateProperties(stateJson?: string): StatePropertyHint[] {
+  if (!stateJson || !stateJson.trim()) return [];
+  try {
+    const parsed = JSON.parse(stateJson);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return [];
+    }
+    const hints: StatePropertyHint[] = [];
+    for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
+      const { valueType } = formatVal(val);
+      hints.push({ name: key, valueType });
+    }
+    return hints;
+  } catch {
+    return [];
+  }
 }
 
 export function serializeRulesToJson(rules: StateMutationRule[]): string | undefined {

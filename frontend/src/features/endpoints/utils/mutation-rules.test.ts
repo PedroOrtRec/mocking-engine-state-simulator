@@ -4,6 +4,7 @@ import {
   parseJsonToRules,
   extractPathParams,
   extractSchemaFields,
+  extractStateProperties,
   type StateMutationRule,
 } from './mutation-rules';
 
@@ -120,6 +121,12 @@ describe('mutation-rules utility', () => {
       { path: 'isVip', valueType: 'boolean' },
       { path: 'customer', valueType: 'json' },
       { path: 'customer.email', valueType: 'string' },
+    ]);
+
+    expect(extractStateProperties('{"theme":"dark","count":1,"active":true}')).toEqual([
+      { name: 'theme', valueType: 'string' },
+      { name: 'count', valueType: 'number' },
+      { name: 'active', valueType: 'boolean' },
     ]);
   });
 });
