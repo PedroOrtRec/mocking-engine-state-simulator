@@ -7,6 +7,8 @@ import {
   extractPathParams,
   extractSchemaFields,
   extractStateProperties,
+  buildCurlRequestCommand,
+  validateFieldAgainstSchemaRule,
   type StateMutationRule,
   type SchemaFieldRule,
 } from './mutation-rules';
@@ -214,5 +216,38 @@ describe('mutation-rules utility', () => {
       required: false,
       format: 'email',
     });
+  });
+
+  it('validateFieldAgainstSchemaRule y buildCurlRequestCommand: validan restricciones del esquema y construyen el cURL con path, X-Session-ID y body tipado', () => {
+    const schemaRules: SchemaFieldRule[] = [
+      { id: '1', name: 'amount', type: 'number', required: true, minimum: '10', maximum: '100' },
+      { id: '2', name: 'email', type: 'string', required: true, format: 'email' },
+    ];
+
+    expect(validateFieldAgainstSchemaRule(schemaRules[0]!, '5')).toContain('mínimo permitido es 10');
+    expect(validateFieldAgainstSchemaRule(schemaRules[1]!, 'not-an-email')).toContain(
+      'Formato de email inválido'
+    );
+
+    const validResult = buildCurlRequestCommand({
+      baseUrl: 'http://localhost:8080',
+      httpMethod: 'POST',
+      pathPattern: '/api/v1/accounts/{accountId}/deposit',
+      sessionKey: 'pedro:escenario1',
+      pathValues: { accountId: 'acc_99' },
+      schemaRules,
+      bodyValues: { amount: '50', email: 'pedro@test.com' },
+    });
+
+    expect(validResult.isValid).toBe(true);
+    expect(validResult.resolvedPath).toBe('/api/v1/accounts/acc_99/deposit');
+    expect(JSON.parse(validResult.bodyJson!)).toEqual({
+      amount: 50,
+      email: 'pedro@test.com',
+    });
+    expect(validResult.curlCommand).toContain('http://localhost:8080/mock/api/v1/accounts/acc_99/deposit');
+    expect(validResult.curlCommand).toContain('-H "X-Session-ID: pedro:escenario1"');
+    expect(validResult.curlCommand).toContain('-H "Content-Type: application/json"');
+    expect(validResult.curlCommand).toContain('"amount": 50');
   });
 });

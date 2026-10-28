@@ -464,3 +464,266 @@ export function parseJsonToRules(stateUpdates?: string): StateMutationRule[] {
     return [];
   }
 }
+
+export interface RequestBuilderResult {
+  resolvedPath: string;
+  bodyJson?: string;
+  curlCommand: string;
+  errors: Record<string, string>;
+  isValid: boolean;
+}
+
+/**
+ * Sugiere un valor inicial válido según las reglas de un campo del JSON Schema.
+ */
+export function getInitialValueForSchemaField(field: SchemaFieldRule): string {
+  if (field.type === 'string') {
+    if (field.enumValues && field.enumValues.trim() !== '') {
+      const firstEnum = field.enumValues
+        .split(',')
+        .map((s) => s.trim())
+        .find((s) => s !== '');
+      if (firstEnum) return firstEnum;
+    }
+    if (field.format === 'email') return 'user@example.com';
+    if (field.format === 'uuid') return '550e8400-e29b-41d4-a716-446655440000';
+    if (field.format === 'date-time') return '2026-10-28T12:00:00Z';
+    if (field.format === 'uri') return 'https://example.com';
+    return '';
+  }
+  if (field.type === 'number' || field.type === 'integer') {
+    if (field.minimum !== undefined && field.minimum.trim() !== '') {
+      return field.minimum.trim();
+    }
+    return field.required ? '1' : '';
+  }
+  if (field.type === 'boolean') {
+    return 'true';
+  }
+  if (field.type === 'object') {
+    return field.required ? '{}' : '';
+  }
+  if (field.type === 'array') {
+    return field.required ? '[]' : '';
+  }
+  return '';
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Valida un valor individual contra su SchemaFieldRule y devuelve un mensaje de error o null si es válido.
+ */
+export function validateFieldAgainstSchemaRule(
+  field: SchemaFieldRule,
+  rawVal: string
+): string | null {
+  const trimmed = rawVal.trim();
+
+  if (trimmed === '') {
+    return field.required ? `El campo '${field.name}' es obligatorio` : null;
+  }
+
+  if (field.type === 'number' || field.type === 'integer') {
+    const num = Number(trimmed);
+    if (Number.isNaN(num)) {
+      return `Debe ser un valor numérico válido`;
+    }
+    if (field.type === 'integer' && !Number.isInteger(num)) {
+      return `Debe ser un número entero (integer)`;
+    }
+    if (field.minimum !== undefined && field.minimum.trim() !== '') {
+      const min = Number(field.minimum);
+      if (!Number.isNaN(min) && num < min) {
+        return `El valor mínimo permitido es ${min}`;
+      }
+    }
+    if (field.maximum !== undefined && field.maximum.trim() !== '') {
+      const max = Number(field.maximum);
+      if (!Number.isNaN(max) && num > max) {
+        return `El valor máximo permitido es ${max}`;
+      }
+    }
+    return null;
+  }
+
+  if (field.type === 'string') {
+    if (field.minLength !== undefined && field.minLength.trim() !== '') {
+      const minLen = Number.parseInt(field.minLength, 10);
+      if (!Number.isNaN(minLen) && rawVal.length < minLen) {
+        return `Longitud mínima: ${minLen} caracteres`;
+      }
+    }
+    if (field.maxLength !== undefined && field.maxLength.trim() !== '') {
+      const maxLen = Number.parseInt(field.maxLength, 10);
+      if (!Number.isNaN(maxLen) && rawVal.length > maxLen) {
+        return `Longitud máxima: ${maxLen} caracteres`;
+      }
+    }
+    if (field.enumValues && field.enumValues.trim() !== '') {
+      const allowed = field.enumValues
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s !== '');
+      if (allowed.length > 0 && !allowed.includes(rawVal)) {
+        return `Valor no permitido (permitidos: ${allowed.join(', ')})`;
+      }
+    }
+    if (field.pattern && field.pattern.trim() !== '') {
+      try {
+        const regex = new RegExp(field.pattern.trim());
+        if (!regex.test(rawVal)) {
+          return `No cumple el patrón regex: ${field.pattern}`;
+        }
+      } catch {
+        // Ignorar si el regex es inválido
+      }
+    }
+    if (field.format === 'email' && !EMAIL_REGEX.test(trimmed)) {
+      return `Formato de email inválido`;
+    }
+    if (field.format === 'uuid' && !UUID_REGEX.test(trimmed)) {
+      return `Formato de UUID inválido`;
+    }
+    if (field.format === 'uri' && !/^https?:\/\/.+/i.test(trimmed)) {
+      return `Formato de URI inválido (debe iniciar con http:// o https://)`;
+    }
+    if (field.format === 'date-time' && Number.isNaN(Date.parse(trimmed))) {
+      return `Formato date-time ISO inválido`;
+    }
+    return null;
+  }
+
+  if (field.type === 'object') {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return `Debe ser un objeto JSON válido (ej. {"clave": "valor"})`;
+      }
+    } catch {
+      return `JSON inválido para objeto`;
+    }
+    return null;
+  }
+
+  if (field.type === 'array') {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (!Array.isArray(parsed)) {
+        return `Debe ser un array JSON válido (ej. ["item1", "item2"])`;
+      }
+    } catch {
+      return `JSON inválido para array`;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+/**
+ * Construye la ruta resuelta, el JSON del body tipado, el comando cURL completo y el mapa de errores de validación.
+ */
+export function buildCurlRequestCommand(params: {
+  baseUrl: string;
+  httpMethod: string;
+  pathPattern: string;
+  sessionKey: string;
+  pathValues: Record<string, string>;
+  schemaRules: SchemaFieldRule[];
+  bodyValues: Record<string, string>;
+  customBodyJson?: string;
+}): RequestBuilderResult {
+  const {
+    baseUrl,
+    httpMethod,
+    pathPattern,
+    sessionKey,
+    pathValues,
+    schemaRules,
+    bodyValues,
+    customBodyJson,
+  } = params;
+
+  const errors: Record<string, string> = {};
+  const cleanPattern = pathPattern.startsWith('/') ? pathPattern : `/${pathPattern}`;
+
+  // 1. Validar y sustituir {pathParams}
+  const pathParams = extractPathParams(cleanPattern);
+  let resolvedPath = cleanPattern;
+  for (const paramName of pathParams) {
+    const val = (pathValues[paramName] ?? '').trim();
+    if (!val) {
+      errors[`path.${paramName}`] = `El parámetro de ruta '{${paramName}}' es obligatorio`;
+    } else {
+      resolvedPath = resolvedPath.replaceAll(`{${paramName}}`, encodeURIComponent(val));
+    }
+  }
+
+  // 2. Validar y construir el Body JSON si aplica
+  let bodyJson: string | undefined;
+
+  if (schemaRules.length > 0) {
+    const bodyObj: Record<string, unknown> = {};
+    for (const field of schemaRules) {
+      const rawVal = bodyValues[field.name] ?? '';
+      const fieldError = validateFieldAgainstSchemaRule(field, rawVal);
+      if (fieldError) {
+        errors[`body.${field.name}`] = fieldError;
+        continue;
+      }
+
+      const trimmed = rawVal.trim();
+      if (trimmed === '') {
+        continue; // Campo opcional vacío no se incluye en el payload
+      }
+
+      if (field.type === 'number' || field.type === 'integer') {
+        bodyObj[field.name] = Number(trimmed);
+      } else if (field.type === 'boolean') {
+        bodyObj[field.name] = trimmed === 'true';
+      } else if (field.type === 'object' || field.type === 'array') {
+        try {
+          bodyObj[field.name] = JSON.parse(trimmed);
+        } catch {
+          bodyObj[field.name] = rawVal;
+        }
+      } else {
+        bodyObj[field.name] = rawVal;
+      }
+    }
+
+    if (Object.keys(bodyObj).length > 0 || schemaRules.some((r) => r.required)) {
+      bodyJson = JSON.stringify(bodyObj, null, 2);
+    }
+  } else if (customBodyJson && customBodyJson.trim() !== '') {
+    try {
+      const parsed = JSON.parse(customBodyJson);
+      bodyJson = JSON.stringify(parsed, null, 2);
+    } catch {
+      errors['customBody'] = 'El JSON personalizado no tiene un formato sintáctico válido';
+    }
+  }
+
+  const effectiveSession = sessionKey.trim() || 'default';
+  const parts: string[] = [
+    `curl -i -X ${httpMethod}`,
+    `"${baseUrl}/mock${resolvedPath}"`,
+    `-H "X-Session-ID: ${effectiveSession}"`,
+  ];
+
+  if (bodyJson !== undefined) {
+    const escapedSingleQuotes = bodyJson.replaceAll("'", "'\\''");
+    parts.push(`-H "Content-Type: application/json"`);
+    parts.push(`-d '${escapedSingleQuotes}'`);
+  }
+
+  return {
+    resolvedPath,
+    bodyJson,
+    curlCommand: parts.join(' \\\n  '),
+    errors,
+    isValid: Object.keys(errors).length === 0,
+  };
+}

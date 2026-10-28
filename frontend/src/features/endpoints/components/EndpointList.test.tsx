@@ -65,22 +65,74 @@ describe('EndpointList Component', () => {
     expect(screen.getByText('GET')).toBeInTheDocument();
   });
 
-  it('debe copiar el comando cURL incluyendo la sesión activa X-Session-ID', async () => {
+  it('debe abrir el modal de construcción y copiar el comando cURL incluyendo la sesión activa X-Session-ID, parámetros de ruta y body JSON', async () => {
     const user = userEvent.setup();
     const writeSpy = vi.spyOn(navigator.clipboard, 'writeText');
+    vi.mocked(endpointsApi.getAll).mockResolvedValueOnce([
+      {
+        id: 2,
+        name: 'Crear Pedido',
+        httpMethod: 'POST',
+        pathPattern: '/api/v1/users/{userId}/orders',
+        statusCode: 201,
+        responseBody: '{"ok": true}',
+        requestSchema: JSON.stringify({
+          $schema: 'http://json-schema.org/draft-07/schema#',
+          type: 'object',
+          required: ['amount', 'role'],
+          properties: {
+            amount: { type: 'number', minimum: 10 },
+            role: { type: 'string', enum: ['USER', 'ADMIN'] },
+          },
+        }),
+        active: true,
+        ownerUsername: 'admin',
+      },
+    ]);
+
     renderWithClient(<EndpointList activeSessionKey="session_custom_99" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Listar Productos')).toBeInTheDocument();
+      expect(screen.getByText('Crear Pedido')).toBeInTheDocument();
     });
 
-    const copyBtn = screen.getByTitle(/copiar comando curl/i);
+    const copyBtn = screen.getByTitle(/construir y copiar comando curl/i);
     await user.click(copyBtn);
+
+    expect(
+      await screen.findByRole('heading', { name: /construir y copiar petición curl/i })
+    ).toBeInTheDocument();
+
+    // Modificar parámetro de ruta {userId}
+    const pathParamInput = screen.getByLabelText(/\{userId\}/i);
+    await user.clear(pathParamInput);
+    await user.type(pathParamInput, '42');
+
+    // Modificar campo numérico 'amount' a un valor inválido (< 10) y comprobar que bloquea la copia
+    const amountInput = screen.getByLabelText(/amount/i);
+    await user.clear(amountInput);
+    await user.type(amountInput, '5');
+
+    expect(screen.getByText(/el valor mínimo permitido es 10/i)).toBeInTheDocument();
+    const copyModalBtn = screen.getByRole('button', { name: /copiar curl al portapapeles/i });
+    expect(copyModalBtn).toBeDisabled();
+
+    // Corregir 'amount' a 50
+    await user.clear(amountInput);
+    await user.type(amountInput, '50');
+    expect(copyModalBtn).not.toBeDisabled();
+
+    await user.click(copyModalBtn);
 
     await waitFor(() => {
       expect(writeSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/mock/api/v1/users/42/orders')
+      );
+      expect(writeSpy).toHaveBeenCalledWith(
         expect.stringContaining('-H "X-Session-ID: session_custom_99"')
       );
+      expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('"amount": 50'));
+      expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('"role": "USER"'));
     });
   });
 

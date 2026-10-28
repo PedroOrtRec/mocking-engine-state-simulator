@@ -3,7 +3,8 @@ import { useEndpoints } from '../hooks/use-endpoints';
 import type { MockEndpoint } from '../api/endpoints-api';
 import { HttpMethodBadge } from './HttpMethodBadge';
 import { EndpointFormModal } from './EndpointFormModal';
-import { Copy, Check, Plus, Power, Trash2, Pencil, Clock, AlertTriangle, Database } from 'lucide-react';
+import { EndpointCopyModal } from './EndpointCopyModal';
+import { Copy, Plus, Power, Trash2, Pencil, Clock, AlertTriangle, Database } from 'lucide-react';
 
 interface EndpointListProps {
   activeSessionKey?: string;
@@ -13,9 +14,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
   const { endpoints, isLoading, toggleEndpoint, deleteEndpoint } = useEndpoints();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEndpoint, setEditingEndpoint] = useState<MockEndpoint | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+  const [copyingEndpoint, setCopyingEndpoint] = useState<MockEndpoint | null>(null);
 
   const handleCreateNew = () => {
     setEditingEndpoint(null);
@@ -32,13 +31,12 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
     setEditingEndpoint(null);
   };
 
-  const handleCopyCurl = (ep: MockEndpoint) => {
-    const cleanPath = ep.pathPattern.startsWith('/') ? ep.pathPattern : `/${ep.pathPattern}`;
-    const sessionHeader = `-H "X-Session-ID: ${activeSessionKey || 'default'}"`;
-    const curlCmd = `curl -i -X ${ep.httpMethod} "${baseUrl}/mock${cleanPath}" ${sessionHeader}`;
-    navigator.clipboard.writeText(curlCmd);
-    setCopiedId(ep.id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleOpenCopyModal = (ep: MockEndpoint) => {
+    setCopyingEndpoint(ep);
+  };
+
+  const handleCloseCopyModal = () => {
+    setCopyingEndpoint(null);
   };
 
   return (
@@ -145,15 +143,11 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                     <td className="py-2.5 px-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => handleCopyCurl(ep)}
+                          onClick={() => handleOpenCopyModal(ep)}
                           className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition-colors"
-                          title="Copiar comando cURL con la sesión activa"
+                          title="Construir y copiar comando cURL con parámetros y body válidos"
                         >
-                          {copiedId === ep.id ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-400" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
+                          <Copy className="h-3.5 w-3.5" />
                         </button>
 
                         <button
@@ -197,6 +191,13 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         initialData={editingEndpoint}
+        activeSessionKey={activeSessionKey}
+      />
+
+      <EndpointCopyModal
+        isOpen={Boolean(copyingEndpoint)}
+        onClose={handleCloseCopyModal}
+        endpoint={copyingEndpoint}
         activeSessionKey={activeSessionKey}
       />
     </div>
