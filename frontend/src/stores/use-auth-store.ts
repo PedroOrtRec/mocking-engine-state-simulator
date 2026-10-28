@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { queryClient } from '@/lib/query-client';
 
 export interface AuthUser {
   username: string;
@@ -20,18 +21,22 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       isAuthenticated: false,
-      login: (token, user) =>
+      login: (token, user) => {
+        queryClient.clear();
         set({
           token,
           user,
           isAuthenticated: true,
-        }),
-      logout: () =>
+        });
+      },
+      logout: () => {
+        queryClient.clear();
         set({
           token: null,
           user: null,
           isAuthenticated: false,
-        }),
+        });
+      },
     }),
     {
       name: 'mockengine-auth-storage',

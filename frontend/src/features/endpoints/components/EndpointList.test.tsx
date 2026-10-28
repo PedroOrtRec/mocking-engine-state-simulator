@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EndpointList } from './EndpointList';
 import { endpointsApi, type MockEndpoint } from '../api/endpoints-api';
+import { useAuthStore } from '@/stores/use-auth-store';
 
 vi.mock('../api/endpoints-api', () => ({
   endpointsApi: {
@@ -148,5 +149,58 @@ describe('EndpointList Component', () => {
     await user.click(editBtn);
 
     expect(await screen.findByRole('heading', { name: /editar mock endpoint/i })).toBeInTheDocument();
+  });
+
+  it('debe recargar la lista de mocks al cambiar de usuario (ej. de admin a invitado) sin mostrar caché de otro usuario', async () => {
+    const adminEndpoints: MockEndpoint[] = [
+      {
+        id: 10,
+        name: 'Endpoint Privado Admin',
+        httpMethod: 'GET',
+        pathPattern: '/api/admin-only',
+        statusCode: 200,
+        responseBody: '{}',
+        active: true,
+        ownerUsername: 'admin',
+      },
+    ];
+    const guestEndpoints: MockEndpoint[] = [];
+
+    useAuthStore.getState().login('admin-token', { username: 'admin', role: 'ROLE_ADMIN' });
+    vi.mocked(endpointsApi.getAll)
+      .mockResolvedValueOnce(adminEndpoints)
+      .mockResolvedValueOnce(guestEndpoints);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 30000 } },
+    });
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <EndpointList />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByText('Endpoint Privado Admin')).toBeInTheDocument();
+
+    // Salir de admin y entrar como invitado
+    act(() => {
+      useAuthStore.getState().logout();
+      useAuthStore.getState().login('guest-token', {
+        username: 'guest_9999',
+        role: 'ROLE_GUEST',
+      });
+    });
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <EndpointList />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Endpoint Privado Admin')).not.toBeInTheDocument();
+      expect(screen.getByText(/no hay endpoints registrados todavía/i)).toBeInTheDocument();
+    });
   });
 });

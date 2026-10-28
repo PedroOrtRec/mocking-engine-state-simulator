@@ -238,7 +238,10 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
   };
 
   // Extract properties from the active session state (and any other user states in cache)
-  const cachedStates = queryClient.getQueryData<ScenarioState[]>(STATES_QUERY_KEY) ?? [];
+  const cachedStateQueries = queryClient.getQueriesData<ScenarioState[]>({
+    queryKey: STATES_QUERY_KEY,
+  });
+  const cachedStates = cachedStateQueries.flatMap(([, data]) => data ?? []);
   const availableStateProperties: StatePropertyHint[] = (() => {
     const seen = new Set<string>();
     const list: StatePropertyHint[] = [];
@@ -350,7 +353,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
       } else {
         await endpointsApi.create(payload);
       }
-      queryClient.invalidateQueries({ queryKey: ['mockEndpoints'] });
+      await queryClient.invalidateQueries({ queryKey: ['mockEndpoints'] });
       onClose();
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { detail?: string } }; message?: string };

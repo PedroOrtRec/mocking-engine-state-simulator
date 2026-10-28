@@ -1,6 +1,7 @@
 import { useState, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
+import { useAuthStore } from '@/stores/use-auth-store';
 import { HttpMethodBadge } from '@/features/endpoints/components/HttpMethodBadge';
 import { Activity, Clock, Eye, Filter, X, Calendar, User, Server } from 'lucide-react';
 
@@ -22,10 +23,11 @@ export function AuditLogViewer() {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [sessionFilter, setSessionFilter] = useState('');
   const sessionFilterInputId = useId();
+  const username = useAuthStore((state) => state.user?.username ?? 'anonymous');
 
   // Consulta los logs de MongoDB con refresco automático cada 3 segundos y filtro por sessionKey:
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ['auditLogs', sessionFilter.trim()],
+    queryKey: ['auditLogs', username, sessionFilter.trim()],
     queryFn: async () => {
       const trimmed = sessionFilter.trim();
       const params = trimmed ? { sessionKey: trimmed } : undefined;
