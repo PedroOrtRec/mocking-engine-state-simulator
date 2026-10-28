@@ -25,8 +25,33 @@ public class JsonSchemaValidationService {
             Set.of("object", "array", "string", "number", "integer", "boolean");
 
     /**
+     * Valida que la definición de requestSchema sea un JSON Schema Draft-07 estructuralmente válido
+     * y no un JSON de ejemplo plano. Lanza IllegalArgumentException si no cumple.
+     */
+    public void assertValidSchemaDefinition(String schemaJson) {
+        if (schemaJson == null || schemaJson.isBlank()) {
+            return;
+        }
+        final JsonNode schemaNode;
+        try {
+            schemaNode = objectMapper.readTree(schemaJson);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("El esquema de validación debe ser un JSON sintácticamente válido");
+        }
+        if (!isJsonSchemaDefinition(schemaNode)) {
+            throw new IllegalArgumentException(
+                    "El campo requestSchema debe ser un JSON Schema de validación válido (ej. {\"type\": \"object\", \"properties\": {...}}), no un JSON plano"
+            );
+        }
+        try {
+            schemaFactory.getSchema(schemaNode);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Definición de JSON Schema inválida: " + e.getMessage());
+        }
+    }
+
+    /**
      * Valida el payload recibido contra el esquema JSON definido.
-     * Si el campo almacena un JSON de ejemplo plano (sin estructura de JSON Schema), no bloquea la petición.
      * Retorna lista de errores de validación, o lista vacía si es válido.
      */
     public List<String> validatePayload(String schemaJson, String requestBody) {
@@ -37,7 +62,7 @@ public class JsonSchemaValidationService {
         try {
             JsonNode schemaNode = objectMapper.readTree(schemaJson);
             if (!isJsonSchemaDefinition(schemaNode)) {
-                return List.of(); // Es un body JSON de ejemplo para extracción de variables {{body.*}}
+                return List.of("El endpoint tiene un requestSchema inválido (no es un JSON Schema Draft-07)");
             }
 
             JsonSchema schema = schemaFactory.getSchema(schemaNode);
@@ -56,7 +81,7 @@ public class JsonSchemaValidationService {
         }
     }
 
-    private boolean isJsonSchemaDefinition(JsonNode node) {
+    public boolean isJsonSchemaDefinition(JsonNode node) {
         if (node == null || !node.isObject()) {
             return false;
         }

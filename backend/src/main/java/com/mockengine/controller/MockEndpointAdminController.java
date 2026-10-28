@@ -3,6 +3,7 @@ package com.mockengine.controller;
 import com.mockengine.dto.MockEndpointDTO;
 import com.mockengine.entity.MockEndpoint;
 import com.mockengine.repository.jpa.MockEndpointRepository;
+import com.mockengine.service.JsonSchemaValidationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
@@ -28,6 +29,7 @@ import java.util.List;
 public class MockEndpointAdminController {
 
     private final MockEndpointRepository mockRepository;
+    private final JsonSchemaValidationService schemaValidationService;
 
     @GetMapping
     public ResponseEntity<List<MockEndpoint>> listAll(Authentication authentication) {
@@ -56,6 +58,8 @@ public class MockEndpointAdminController {
     ) {
         String ownerUsername = (authentication != null) ? authentication.getName() : "system";
         boolean ephemeral = isGuest(authentication);
+
+        schemaValidationService.assertValidSchemaDefinition(dto.getRequestSchema());
 
         log.info("Creando nuevo mock endpoint: {} {} para propietario: {} (efímero: {})",
                 dto.getHttpMethod(), dto.getPathPattern(), ownerUsername, ephemeral);
@@ -93,6 +97,7 @@ public class MockEndpointAdminController {
                 .orElseThrow(() -> new EntityNotFoundException("Mock no encontrado con ID: " + id));
 
         validateOwnershipOrAdmin(existing, authentication);
+        schemaValidationService.assertValidSchemaDefinition(dto.getRequestSchema());
 
         existing.setName(dto.getName());
         existing.setHttpMethod(dto.getHttpMethod().toUpperCase());

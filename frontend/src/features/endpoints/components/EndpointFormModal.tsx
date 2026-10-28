@@ -9,6 +9,8 @@ import {
 import {
   serializeRulesToJson,
   parseJsonToRules,
+  serializeSchemaRulesToJson,
+  parseJsonToSchemaRules,
   extractPathParams,
   extractSchemaFields,
   extractStateProperties,
@@ -17,6 +19,9 @@ import {
   type StateMutationOp,
   type StateValueType,
   type StatePropertyHint,
+  type SchemaFieldRule,
+  type SchemaPropertyType,
+  type SchemaStringFormat,
 } from '../utils/mutation-rules';
 import { STATES_QUERY_KEY } from '@/features/states/hooks/use-states';
 import type { ScenarioState } from '@/features/states/api/states-api';
@@ -28,6 +33,7 @@ import {
   Settings,
   HelpCircle,
   Database,
+  ShieldCheck,
   Plus,
   Trash2,
   type LucideIcon,
@@ -105,7 +111,30 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
     initialData?.responseBody ?? '{\n  "message": "success"\n}'
   );
   const [responseHeaders, setResponseHeaders] = useState(initialData?.responseHeaders ?? '');
-  const [requestSchema, setRequestSchema] = useState(initialData?.requestSchema ?? '');
+
+  // Request Schema visual builder rules (Row 4)
+  const [schemaRules, setSchemaRules] = useState<SchemaFieldRule[]>(() =>
+    parseJsonToSchemaRules(initialData?.requestSchema)
+  );
+  const [expandedConstraintIds, setExpandedConstraintIds] = useState<{
+    [fieldId: string]: boolean;
+  }>(() => {
+    const initialExpanded: { [fieldId: string]: boolean } = {};
+    for (const r of parseJsonToSchemaRules(initialData?.requestSchema)) {
+      if (
+        r.minimum ||
+        r.maximum ||
+        r.minLength ||
+        r.maxLength ||
+        r.pattern ||
+        r.format ||
+        r.enumValues
+      ) {
+        initialExpanded[r.id] = true;
+      }
+    }
+    return initialExpanded;
+  });
 
   // State mutations rules (Option 3A)
   const [rules, setRules] = useState<StateMutationRule[]>(() =>
@@ -131,7 +160,6 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
   // Validation errors
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [headersError, setHeadersError] = useState<string | null>(null);
-  const [schemaError, setSchemaError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -141,7 +169,6 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
   const pathPatternId = useId();
   const responseBodyId = useId();
   const responseHeadersId = useId();
-  const requestSchemaId = useId();
 
   const handleMethodChange = (newMethod: HttpMethod) => {
     setHttpMethod(newMethod);
@@ -183,18 +210,31 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
     }
   };
 
-  const handleSchemaChange = (val: string) => {
-    setRequestSchema(val);
-    if (!val.trim()) {
-      setSchemaError(null);
-      return;
-    }
-    try {
-      JSON.parse(val);
-      setSchemaError(null);
-    } catch {
-      setSchemaError('El body de la petición debe tener formato JSON válido');
-    }
+  // Schema builder handlers
+  const handleAddSchemaField = () => {
+    setSchemaRules((prev) => [
+      ...prev,
+      {
+        id: `schema-field-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: '',
+        type: 'string',
+        required: true,
+      },
+    ]);
+  };
+
+  const handleRemoveSchemaField = (id: string) => {
+    setSchemaRules((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleUpdateSchemaField = (id: string, updates: Partial<SchemaFieldRule>) => {
+    setSchemaRules((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+    );
+  };
+
+  const toggleSchemaConstraints = (id: string) => {
+    setExpandedConstraintIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   // Extract properties from the active session state (and any other user states in cache)
@@ -255,9 +295,10 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
     );
   };
 
+  const serializedSchemaPreview = serializeSchemaRulesToJson(schemaRules);
   const serializedPreview = serializeRulesToJson(rules);
   const detectedPathParams = extractPathParams(pathPattern);
-  const detectedSchemaFields = extractSchemaFields(requestSchema);
+  const detectedSchemaFields = extractSchemaFields(serializedSchemaPreview);
   const hasDetectedVariables =
     detectedPathParams.length > 0 || detectedSchemaFields.length > 0;
 
@@ -282,18 +323,10 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
       }
     }
 
-    if (requestSchema.trim()) {
-      try {
-        JSON.parse(requestSchema);
-      } catch {
-        setSchemaError('El esquema de validación debe tener formato JSON válido');
-        return;
-      }
-    }
-
     const normalizedPath = pathPattern.startsWith('/') ? pathPattern : `/${pathPattern}`;
     const normalizedErrorRate = errorRate > 0 ? Number((errorRate / 100).toFixed(2)) : 0.0;
     const serializedStateUpdates = serializeRulesToJson(rules);
+    const serializedRequestSchema = serializeSchemaRulesToJson(schemaRules);
 
     const payload: MockEndpointPayload = {
       name: name.trim(),
@@ -302,7 +335,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
       statusCode,
       responseBody,
       responseHeaders: responseHeaders.trim() ? responseHeaders.trim() : undefined,
-      requestSchema: requestSchema.trim() ? requestSchema.trim() : undefined,
+      requestSchema: serializedRequestSchema,
       stateUpdates: serializedStateUpdates,
       delayMs: delayMs > 0 ? delayMs : 0,
       errorRate: normalizedErrorRate,
@@ -437,34 +470,303 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
           </div>
         </div>
 
-        {/* 4ª FILA: Body de la Petición (JSON) */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label htmlFor={requestSchemaId} className="text-xs font-medium text-slate-300 flex items-center gap-1">
-              <span>Body de la Petición (JSON — Opcional)</span>
-              <HelpCircle className="h-3 w-3 text-slate-500" />
-            </label>
-            {schemaError && <span className="text-xs text-rose-400">{schemaError}</span>}
+        {/* 4ª FILA: CONSTRUCTOR VISUAL DE VALIDATION SCHEMA DEL BODY */}
+        <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <span>Esquema de Validación del Body (JSON Schema — Opcional)</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddSchemaField}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-300 text-xs font-medium rounded-lg transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Añadir campo al body</span>
+            </button>
           </div>
-          <textarea
-            id={requestSchemaId}
-            rows={3}
-            value={requestSchema}
-            onChange={(e) => handleSchemaChange(e.target.value)}
-            placeholder={'{\n  "amount": 50,\n  "username": "pedro"\n}'}
-            className="w-full font-mono text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-          />
-          {detectedSchemaFields.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-              <span className="text-[10px] text-slate-400">Campos del body detectados:</span>
-              {detectedSchemaFields.map((field) => (
-                <span
-                  key={field.path}
-                  className="px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/80 text-[10px] font-mono text-emerald-300"
-                >
-                  {`{{body.${field.path}}}`} ({field.valueType})
-                </span>
-              ))}
+
+          <p className="text-[11px] text-slate-400">
+            Define de forma asistida los campos esperados en el body de la petición y sus restricciones. El constructor genera un{' '}
+            <code className="text-emerald-300 font-mono">JSON Schema Draft-07</code> estricto y habilita los chips{' '}
+            <code className="text-emerald-300 font-mono">{'{{body.*}}'}</code> en las mutaciones de estado.
+          </p>
+
+          {schemaRules.length === 0 ? (
+            <div className="py-3 text-center text-xs text-slate-500 border border-dashed border-slate-800/80 rounded-lg">
+              Sin esquema de validación de body. Pulsa «Añadir campo al body» para exigir contrato de entrada.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {schemaRules.map((field, idx) => {
+                const isNumeric = field.type === 'number' || field.type === 'integer';
+                const isString = field.type === 'string';
+                const supportsConstraints = isNumeric || isString;
+                const isExpanded = Boolean(expandedConstraintIds[field.id]);
+
+                return (
+                  <div
+                    key={field.id}
+                    className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-2"
+                  >
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      {/* Nombre del campo */}
+                      <div className="flex-1">
+                        <label htmlFor={`schema-name-${field.id}`} className="sr-only">
+                          Campo del body {idx + 1}
+                        </label>
+                        <input
+                          id={`schema-name-${field.id}`}
+                          type="text"
+                          value={field.name}
+                          onChange={(e) =>
+                            handleUpdateSchemaField(field.id, { name: e.target.value })
+                          }
+                          placeholder="Nombre del campo (ej. amount)"
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
+                        />
+                      </div>
+
+                      {/* Tipo JSON Schema */}
+                      <div className="w-full sm:w-1/4">
+                        <label htmlFor={`schema-type-${field.id}`} className="sr-only">
+                          Tipo del campo {idx + 1}
+                        </label>
+                        <select
+                          id={`schema-type-${field.id}`}
+                          value={field.type}
+                          onChange={(e) =>
+                            handleUpdateSchemaField(field.id, {
+                              type: e.target.value as SchemaPropertyType,
+                            })
+                          }
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-300 font-medium focus:outline-none focus:border-emerald-500 text-xs"
+                        >
+                          <option value="string">string (Texto)</option>
+                          <option value="number">number (Decimal)</option>
+                          <option value="integer">integer (Entero)</option>
+                          <option value="boolean">boolean (Booleano)</option>
+                          <option value="object">object (Objeto)</option>
+                          <option value="array">array (Lista)</option>
+                        </select>
+                      </div>
+
+                      {/* Checkbox Obligatorio (required) */}
+                      <label className="flex items-center gap-1.5 px-2 py-1 text-slate-300 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={field.required}
+                          onChange={(e) =>
+                            handleUpdateSchemaField(field.id, { required: e.target.checked })
+                          }
+                          className="rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0"
+                        />
+                        <span className="text-[11px]">Obligatorio</span>
+                      </label>
+
+                      {/* Botón de Restricciones avanzadas */}
+                      {supportsConstraints && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSchemaConstraints(field.id)}
+                          className={`px-2 py-1 rounded border text-[10px] font-medium transition-colors ${
+                            isExpanded
+                              ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300'
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          Restricciones
+                        </button>
+                      )}
+
+                      {/* Eliminar fila */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSchemaField(field.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors self-end sm:self-center"
+                        title="Eliminar campo del esquema"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Panel desplegable de restricciones por tipo */}
+                    {supportsConstraints && isExpanded && (
+                      <div className="pt-2 border-t border-slate-800/70 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {isNumeric && (
+                          <>
+                            <div>
+                              <label
+                                htmlFor={`schema-min-${field.id}`}
+                                className="text-[10px] text-slate-400 block mb-0.5"
+                              >
+                                Valor mínimo (minimum)
+                              </label>
+                              <input
+                                id={`schema-min-${field.id}`}
+                                type="number"
+                                value={field.minimum ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateSchemaField(field.id, { minimum: e.target.value })
+                                }
+                                placeholder="ej. 1"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={`schema-max-${field.id}`}
+                                className="text-[10px] text-slate-400 block mb-0.5"
+                              >
+                                Valor máximo (maximum)
+                              </label>
+                              <input
+                                id={`schema-max-${field.id}`}
+                                type="number"
+                                value={field.maximum ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateSchemaField(field.id, { maximum: e.target.value })
+                                }
+                                placeholder="ej. 10000"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {isString && (
+                          <>
+                            <div>
+                              <label
+                                htmlFor={`schema-minlen-${field.id}`}
+                                className="text-[10px] text-slate-400 block mb-0.5"
+                              >
+                                Longitud mín. (minLength)
+                              </label>
+                              <input
+                                id={`schema-minlen-${field.id}`}
+                                type="number"
+                                min={0}
+                                value={field.minLength ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateSchemaField(field.id, { minLength: e.target.value })
+                                }
+                                placeholder="ej. 3"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={`schema-maxlen-${field.id}`}
+                                className="text-[10px] text-slate-400 block mb-0.5"
+                              >
+                                Longitud máx. (maxLength)
+                              </label>
+                              <input
+                                id={`schema-maxlen-${field.id}`}
+                                type="number"
+                                min={0}
+                                value={field.maxLength ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateSchemaField(field.id, { maxLength: e.target.value })
+                                }
+                                placeholder="ej. 50"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={`schema-format-${field.id}`}
+                                className="text-[10px] text-slate-400 block mb-0.5"
+                              >
+                                Formato (format)
+                              </label>
+                              <select
+                                id={`schema-format-${field.id}`}
+                                value={field.format ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateSchemaField(field.id, {
+                                    format: e.target.value as SchemaStringFormat,
+                                  })
+                                }
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-mono text-xs"
+                              >
+                                <option value="">Sin formato específico</option>
+                                <option value="email">email</option>
+                                <option value="uuid">uuid</option>
+                                <option value="date-time">date-time</option>
+                                <option value="uri">uri</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={`schema-pattern-${field.id}`}
+                                className="text-[10px] text-slate-400 block mb-0.5"
+                              >
+                                Expresión regular (pattern)
+                              </label>
+                              <input
+                                id={`schema-pattern-${field.id}`}
+                                type="text"
+                                value={field.pattern ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateSchemaField(field.id, { pattern: e.target.value })
+                                }
+                                placeholder="ej. ^[A-Z0-9_]+$"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label
+                                htmlFor={`schema-enum-${field.id}`}
+                                className="text-[10px] text-slate-400 block mb-0.5"
+                              >
+                                Valores permitidos (enum, separados por coma)
+                              </label>
+                              <input
+                                id={`schema-enum-${field.id}`}
+                                type="text"
+                                value={field.enumValues ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateSchemaField(field.id, { enumValues: e.target.value })
+                                }
+                                placeholder="ej. PENDING, PAID, CANCELLED"
+                                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white font-mono text-xs"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {detectedSchemaFields.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="text-[10px] text-slate-400">Campos del body detectados:</span>
+                  {detectedSchemaFields.map((field) => (
+                    <span
+                      key={field.path}
+                      className="px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/80 text-[10px] font-mono text-emerald-300"
+                    >
+                      {`{{body.${field.path}}}`} ({field.valueType})
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {serializedSchemaPreview && (
+                <div className="pt-1 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                    JSON Schema Draft-07 generado (solo lectura):
+                  </span>
+                  <pre className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-emerald-300 font-mono text-[11px] overflow-x-auto max-h-28">
+                    {serializedSchemaPreview}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -901,7 +1203,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || !!bodyError || !!headersError || !!schemaError}
+            disabled={isSubmitting || !!bodyError || !!headersError}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold text-white rounded-lg transition-colors shadow-sm"
           >
             {isSubmitting

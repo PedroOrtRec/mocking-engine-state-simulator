@@ -14,6 +14,23 @@ export interface SchemaFieldHint {
   valueType: StateValueType;
 }
 
+export type SchemaPropertyType = 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
+export type SchemaStringFormat = '' | 'email' | 'uuid' | 'date-time' | 'uri';
+
+export interface SchemaFieldRule {
+  id: string;
+  name: string;
+  type: SchemaPropertyType;
+  required: boolean;
+  minimum?: string;
+  maximum?: string;
+  minLength?: string;
+  maxLength?: string;
+  pattern?: string;
+  format?: SchemaStringFormat;
+  enumValues?: string;
+}
+
 export interface StatePropertyHint {
   name: string;
   valueType: StateValueType;
@@ -53,13 +70,13 @@ function mapSchemaTypeToValueType(schemaType: unknown): StateValueType {
 }
 
 /**
- * Extrae recursivamente los campos declarados tanto en un JSON de ejemplo del Body de la Petición
- * (ej. {"amount": 50, "user": {"name": "Ana"}}) como en un JSON Schema (properties), junto con su tipo sugerido.
+ * Extrae recursivamente los campos declarados en un JSON Schema (properties) junto con su tipo sugerido.
+ * Rechaza e ignora cualquier JSON plano que no sea una definición de JSON Schema.
  */
-export function extractSchemaFields(requestBodyOrSchema?: string): SchemaFieldHint[] {
-  if (!requestBodyOrSchema || !requestBodyOrSchema.trim()) return [];
+export function extractSchemaFields(requestSchema?: string): SchemaFieldHint[] {
+  if (!requestSchema || !requestSchema.trim()) return [];
   try {
-    const parsed = JSON.parse(requestBodyOrSchema);
+    const parsed = JSON.parse(requestSchema);
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return [];
     }
@@ -67,56 +84,210 @@ export function extractSchemaFields(requestBodyOrSchema?: string): SchemaFieldHi
     const root = parsed as Record<string, unknown>;
     const hints: SchemaFieldHint[] = [];
 
-    // Caso 1: Formato JSON Schema ({ type: "object", properties: { ... } })
     const isJsonSchema =
       root.type === 'object' &&
       typeof root.properties === 'object' &&
       root.properties !== null &&
       !Array.isArray(root.properties);
 
-    if (isJsonSchema) {
-      function traverseSchema(node: Record<string, unknown>, prefix: string, depth: number) {
-        if (depth > 3) return;
-        const props = node.properties;
-        if (typeof props !== 'object' || props === null || Array.isArray(props)) {
-          return;
-        }
-
-        for (const [propName, propDef] of Object.entries(props as Record<string, unknown>)) {
-          const fullPath = prefix ? `${prefix}.${propName}` : propName;
-          if (typeof propDef === 'object' && propDef !== null && !Array.isArray(propDef)) {
-            const defObj = propDef as Record<string, unknown>;
-            const vType = mapSchemaTypeToValueType(defObj.type);
-            hints.push({ path: fullPath, valueType: vType });
-
-            if (defObj.type === 'object' && defObj.properties) {
-              traverseSchema(defObj, fullPath, depth + 1);
-            }
-          } else {
-            hints.push({ path: fullPath, valueType: 'string' });
-          }
-        }
-      }
-
-      traverseSchema(root, '', 1);
-      return hints;
+    if (!isJsonSchema) {
+      return [];
     }
 
-    // Caso 2: Body de petición JSON directo (ej. { "amount": 50, "customer": { "email": "a@b.com" } })
-    function traverseBodyExample(obj: Record<string, unknown>, prefix: string, depth: number) {
+    function traverseSchema(node: Record<string, unknown>, prefix: string, depth: number) {
       if (depth > 3) return;
-      for (const [key, val] of Object.entries(obj)) {
-        const fullPath = prefix ? `${prefix}.${key}` : key;
-        const { valueType } = formatVal(val);
-        hints.push({ path: fullPath, valueType });
-        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-          traverseBodyExample(val as Record<string, unknown>, fullPath, depth + 1);
+      const props = node.properties;
+      if (typeof props !== 'object' || props === null || Array.isArray(props)) {
+        return;
+      }
+
+      for (const [propName, propDef] of Object.entries(props as Record<string, unknown>)) {
+        const fullPath = prefix ? `${prefix}.${propName}` : propName;
+        if (typeof propDef === 'object' && propDef !== null && !Array.isArray(propDef)) {
+          const defObj = propDef as Record<string, unknown>;
+          const vType = mapSchemaTypeToValueType(defObj.type);
+          hints.push({ path: fullPath, valueType: vType });
+
+          if (defObj.type === 'object' && defObj.properties) {
+            traverseSchema(defObj, fullPath, depth + 1);
+          }
+        } else {
+          hints.push({ path: fullPath, valueType: 'string' });
         }
       }
     }
 
-    traverseBodyExample(root, '', 1);
+    traverseSchema(root, '', 1);
     return hints;
+  } catch {
+    return [];
+  }
+}
+
+const VALID_SCHEMA_PROP_TYPES = new Set<SchemaPropertyType>([
+  'string',
+  'number',
+  'integer',
+  'boolean',
+  'object',
+  'array',
+]);
+
+const VALID_STRING_FORMATS = new Set<SchemaStringFormat>([
+  '',
+  'email',
+  'uuid',
+  'date-time',
+  'uri',
+]);
+
+/**
+ * Serializa las filas del constructor visual de validación a un documento JSON Schema Draft-07.
+ */
+export function serializeSchemaRulesToJson(rules: SchemaFieldRule[]): string | undefined {
+  const validRules = rules.filter((r) => r.name.trim() !== '');
+  if (validRules.length === 0) {
+    return undefined;
+  }
+
+  const properties: Record<string, Record<string, unknown>> = {};
+  const required: string[] = [];
+
+  for (const rule of validRules) {
+    const fieldName = rule.name.trim();
+    const propDef: Record<string, unknown> = {
+      type: rule.type,
+    };
+
+    if (rule.required && !required.includes(fieldName)) {
+      required.push(fieldName);
+    }
+
+    if (rule.type === 'number' || rule.type === 'integer') {
+      if (rule.minimum !== undefined && rule.minimum.trim() !== '') {
+        const minNum = Number(rule.minimum.trim());
+        if (!Number.isNaN(minNum)) propDef.minimum = minNum;
+      }
+      if (rule.maximum !== undefined && rule.maximum.trim() !== '') {
+        const maxNum = Number(rule.maximum.trim());
+        if (!Number.isNaN(maxNum)) propDef.maximum = maxNum;
+      }
+    }
+
+    if (rule.type === 'string') {
+      if (rule.minLength !== undefined && rule.minLength.trim() !== '') {
+        const minLen = Number.parseInt(rule.minLength.trim(), 10);
+        if (!Number.isNaN(minLen) && minLen >= 0) propDef.minLength = minLen;
+      }
+      if (rule.maxLength !== undefined && rule.maxLength.trim() !== '') {
+        const maxLen = Number.parseInt(rule.maxLength.trim(), 10);
+        if (!Number.isNaN(maxLen) && maxLen >= 0) propDef.maxLength = maxLen;
+      }
+      if (rule.pattern !== undefined && rule.pattern.trim() !== '') {
+        propDef.pattern = rule.pattern.trim();
+      }
+      if (rule.format && rule.format.trim() !== '') {
+        propDef.format = rule.format.trim();
+      }
+      if (rule.enumValues !== undefined && rule.enumValues.trim() !== '') {
+        const items = rule.enumValues
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s !== '');
+        if (items.length > 0) {
+          propDef.enum = items;
+        }
+      }
+    }
+
+    properties[fieldName] = propDef;
+  }
+
+  const schemaDoc: Record<string, unknown> = {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    properties,
+  };
+
+  if (required.length > 0) {
+    schemaDoc.required = required;
+  }
+
+  return JSON.stringify(schemaDoc, null, 2);
+}
+
+/**
+ * Deserializa un JSON Schema existente en las filas del constructor visual.
+ */
+export function parseJsonToSchemaRules(requestSchema?: string): SchemaFieldRule[] {
+  if (!requestSchema || !requestSchema.trim()) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(requestSchema);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return [];
+    }
+
+    const root = parsed as Record<string, unknown>;
+    if (
+      root.type !== 'object' ||
+      typeof root.properties !== 'object' ||
+      root.properties === null ||
+      Array.isArray(root.properties)
+    ) {
+      return [];
+    }
+
+    const requiredSet = new Set<string>(
+      Array.isArray(root.required)
+        ? root.required.filter((item): item is string => typeof item === 'string')
+        : []
+    );
+
+    const rules: SchemaFieldRule[] = [];
+    let counter = 1;
+
+    for (const [propName, rawDef] of Object.entries(root.properties as Record<string, unknown>)) {
+      const id = `schema-field-${counter++}`;
+      if (typeof rawDef !== 'object' || rawDef === null || Array.isArray(rawDef)) {
+        rules.push({
+          id,
+          name: propName,
+          type: 'string',
+          required: requiredSet.has(propName),
+        });
+        continue;
+      }
+
+      const def = rawDef as Record<string, unknown>;
+      const rawType = typeof def.type === 'string' ? (def.type as SchemaPropertyType) : 'string';
+      const type: SchemaPropertyType = VALID_SCHEMA_PROP_TYPES.has(rawType) ? rawType : 'string';
+      const rawFormat = typeof def.format === 'string' ? (def.format as SchemaStringFormat) : '';
+      const format: SchemaStringFormat = VALID_STRING_FORMATS.has(rawFormat) ? rawFormat : '';
+
+      const rule: SchemaFieldRule = {
+        id,
+        name: propName,
+        type,
+        required: requiredSet.has(propName),
+      };
+
+      if (typeof def.minimum === 'number') rule.minimum = String(def.minimum);
+      if (typeof def.maximum === 'number') rule.maximum = String(def.maximum);
+      if (typeof def.minLength === 'number') rule.minLength = String(def.minLength);
+      if (typeof def.maxLength === 'number') rule.maxLength = String(def.maxLength);
+      if (typeof def.pattern === 'string') rule.pattern = def.pattern;
+      if (format) rule.format = format;
+      if (Array.isArray(def.enum) && def.enum.length > 0) {
+        rule.enumValues = def.enum.map((v) => String(v)).join(', ');
+      }
+
+      rules.push(rule);
+    }
+
+    return rules;
   } catch {
     return [];
   }

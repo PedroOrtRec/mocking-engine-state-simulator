@@ -251,7 +251,7 @@ describe('EndpointFormModal Component', () => {
     expect(valTypeSelect.value).toBe('number');
   });
 
-  it('debe asignar el código HTTP recomendado al cambiar el Método HTTP y capturar campos del Body de la Petición en los chips', async () => {
+  it('debe asignar el código HTTP recomendado al cambiar el Método HTTP y construir un JSON Schema mediante el constructor visual en la 4ª fila', async () => {
     const user = userEvent.setup();
     renderWithClient(<EndpointFormModal isOpen={true} onClose={vi.fn()} />);
 
@@ -266,11 +266,22 @@ describe('EndpointFormModal Component', () => {
     await user.selectOptions(methodSelect, 'DELETE');
     expect(statusInput.value).toBe('204');
 
-    // Escribir un JSON de ejemplo en la 4ª fila (Body de la Petición)
-    const reqBodyTextarea = screen.getByLabelText(/body de la petición/i);
-    fireEvent.change(reqBodyTextarea, {
-      target: { value: '{"quantity": 3, "sku": "ITEM-9"}' },
-    });
+    // Añadir un campo de validación del body mediante el constructor visual (4ª fila)
+    await user.click(screen.getByRole('button', { name: /añadir campo al body/i }));
+
+    const fieldNameInput = screen.getByLabelText(/campo del body 1/i);
+    await user.type(fieldNameInput, 'quantity');
+
+    const fieldTypeSelect = screen.getByLabelText(/tipo del campo 1/i);
+    await user.selectOptions(fieldTypeSelect, 'number');
+
+    // Abrir restricciones avanzadas y fijar minimum = 1
+    await user.click(screen.getByRole('button', { name: /restricciones/i }));
+    const minInput = screen.getByLabelText(/valor mínimo \(minimum\)/i);
+    await user.type(minInput, '1');
+
+    // Comprobar que aparece la vista previa del JSON Schema Draft-07 generado
+    expect(screen.getByText(/json schema draft-07 generado/i)).toBeInTheDocument();
 
     // Añadir regla de estado y comprobar que aparece el chip {{body.quantity}} (number)
     await user.click(screen.getByRole('button', { name: /añadir regla de estado/i }));

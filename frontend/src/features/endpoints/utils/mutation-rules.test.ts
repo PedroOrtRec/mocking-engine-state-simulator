@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   serializeRulesToJson,
   parseJsonToRules,
+  serializeSchemaRulesToJson,
+  parseJsonToSchemaRules,
   extractPathParams,
   extractSchemaFields,
   extractStateProperties,
   type StateMutationRule,
+  type SchemaFieldRule,
 } from './mutation-rules';
 
 describe('mutation-rules utility', () => {
@@ -123,25 +126,93 @@ describe('mutation-rules utility', () => {
       { path: 'customer.email', valueType: 'string' },
     ]);
 
-    // También debe capturar campos desde un Body de la Petición JSON de ejemplo directo
+    // Debe rechazar e ignorar un JSON plano que no sea un JSON Schema
     const plainBodyExample = JSON.stringify({
       price: 120,
       couponActive: true,
-      buyer: {
-        username: 'pedro',
-      },
     });
-    expect(extractSchemaFields(plainBodyExample)).toEqual([
-      { path: 'price', valueType: 'number' },
-      { path: 'couponActive', valueType: 'boolean' },
-      { path: 'buyer', valueType: 'json' },
-      { path: 'buyer.username', valueType: 'string' },
-    ]);
+    expect(extractSchemaFields(plainBodyExample)).toEqual([]);
 
     expect(extractStateProperties('{"theme":"dark","count":1,"active":true}')).toEqual([
       { name: 'theme', valueType: 'string' },
       { name: 'count', valueType: 'number' },
       { name: 'active', valueType: 'boolean' },
     ]);
+  });
+
+  it('serializeSchemaRulesToJson y parseJsonToSchemaRules: construyen y deserializan JSON Schema Draft-07 con restricciones avanzadas', () => {
+    const schemaRules: SchemaFieldRule[] = [
+      {
+        id: 'f1',
+        name: 'amount',
+        type: 'number',
+        required: true,
+        minimum: '10',
+        maximum: '500',
+      },
+      {
+        id: 'f2',
+        name: 'role',
+        type: 'string',
+        required: true,
+        minLength: '3',
+        maxLength: '20',
+        pattern: '^[A-Z]+$',
+        enumValues: 'USER, ADMIN',
+      },
+      {
+        id: 'f3',
+        name: 'email',
+        type: 'string',
+        required: false,
+        format: 'email',
+      },
+    ];
+
+    const jsonSchemaStr = serializeSchemaRulesToJson(schemaRules);
+    expect(jsonSchemaStr).toBeDefined();
+
+    const parsedSchema = JSON.parse(jsonSchemaStr!);
+    expect(parsedSchema).toEqual({
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      required: ['amount', 'role'],
+      properties: {
+        amount: { type: 'number', minimum: 10, maximum: 500 },
+        role: {
+          type: 'string',
+          minLength: 3,
+          maxLength: 20,
+          pattern: '^[A-Z]+$',
+          enum: ['USER', 'ADMIN'],
+        },
+        email: { type: 'string', format: 'email' },
+      },
+    });
+
+    const roundTrip = parseJsonToSchemaRules(jsonSchemaStr);
+    expect(roundTrip).toHaveLength(3);
+    expect(roundTrip[0]).toMatchObject({
+      name: 'amount',
+      type: 'number',
+      required: true,
+      minimum: '10',
+      maximum: '500',
+    });
+    expect(roundTrip[1]).toMatchObject({
+      name: 'role',
+      type: 'string',
+      required: true,
+      minLength: '3',
+      maxLength: '20',
+      pattern: '^[A-Z]+$',
+      enumValues: 'USER, ADMIN',
+    });
+    expect(roundTrip[2]).toMatchObject({
+      name: 'email',
+      type: 'string',
+      required: false,
+      format: 'email',
+    });
   });
 });

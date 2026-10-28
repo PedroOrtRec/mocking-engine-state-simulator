@@ -5,6 +5,7 @@ import com.mockengine.dto.MockEndpointDTO;
 import com.mockengine.entity.MockEndpoint;
 import com.mockengine.exception.GlobalExceptionHandler;
 import com.mockengine.repository.jpa.MockEndpointRepository;
+import com.mockengine.service.JsonSchemaValidationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,11 +39,14 @@ class MockEndpointAdminControllerTest {
     @Mock
     private MockEndpointRepository mockRepository;
 
-    @InjectMocks
+    private final JsonSchemaValidationService schemaValidationService =
+            new JsonSchemaValidationService(new ObjectMapper());
+
     private MockEndpointAdminController controller;
 
     @BeforeEach
     void setUp() {
+        controller = new MockEndpointAdminController(mockRepository, schemaValidationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -161,5 +165,29 @@ class MockEndpointAdminControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(mockRepository).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("Crear mock con un JSON plano en requestSchema debe retornar 400 Bad Request")
+    void create_WithPlainJsonAsRequestSchema_ReturnsBadRequest() throws Exception {
+        Authentication userAuth = new UsernamePasswordAuthenticationToken(
+                "pedro", null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
+        MockEndpointDTO dto = MockEndpointDTO.builder()
+                .name("Invalid Schema Mock")
+                .httpMethod("POST")
+                .pathPattern("/api/pay")
+                .statusCode(201)
+                .requestSchema("{\"amount\": 50, \"username\": \"pedro\"}")
+                .build();
+
+        mockMvc.perform(post("/api/v1/admin/endpoints")
+                        .principal(userAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error_code").value("ILLEGAL_ARGUMENT"));
+
+        verify(mockRepository, never()).save(any(MockEndpoint.class));
     }
 }
