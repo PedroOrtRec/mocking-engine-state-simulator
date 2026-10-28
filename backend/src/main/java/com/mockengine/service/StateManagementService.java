@@ -79,8 +79,15 @@ public class StateManagementService {
     @Transactional
     public List<ScenarioStateDTO> listUserStates(String ownerUsername) {
         getOrCreateDefaultState();
-        return scenarioStateRepository.findByOwnerUsernameOrSystemTrue(ownerUsername)
-                .stream()
+        List<ScenarioState> states = scenarioStateRepository.findByOwnerUsernameOrSystemTrue(ownerUsername);
+        for (ScenarioState s : states) {
+            if (s.getInitialStateJson() == null || s.getInitialStateJson().isBlank()) {
+                String fallback = (s.getStateJson() != null && !s.getStateJson().isBlank()) ? s.getStateJson() : "{}";
+                s.setInitialStateJson(fallback);
+                scenarioStateRepository.save(s);
+            }
+        }
+        return states.stream()
                 .map(ScenarioStateDTO::fromEntity)
                 .toList();
     }
@@ -321,6 +328,9 @@ public class StateManagementService {
             } else if (isDefaultSession(sessionKey)) {
                 ScenarioState stateEntity = scenarioStateRepository.findBySessionKey(DEFAULT_SESSION_KEY)
                         .orElseGet(this::getOrCreateDefaultState);
+                if (stateEntity.getInitialStateJson() == null || stateEntity.getInitialStateJson().isBlank()) {
+                    stateEntity.setInitialStateJson(stateEntity.getStateJson() != null ? stateEntity.getStateJson() : "{}");
+                }
                 stateEntity.setStateJson(json);
                 scenarioStateRepository.save(stateEntity);
                 log.debug("Estado del sistema actualizado en PostgreSQL: {}", state);
@@ -338,8 +348,12 @@ public class StateManagementService {
                                     .ownerUsername(owner)
                                     .sessionKey(sessionKey)
                                     .stateJson("{}")
+                                    .initialStateJson("{}")
                                     .build();
                         });
+                if (stateEntity.getInitialStateJson() == null || stateEntity.getInitialStateJson().isBlank()) {
+                    stateEntity.setInitialStateJson(stateEntity.getStateJson() != null ? stateEntity.getStateJson() : "{}");
+                }
                 stateEntity.setStateJson(json);
                 scenarioStateRepository.save(stateEntity);
                 log.debug("Estado persistente actualizado en PostgreSQL [{}]: {}", sessionKey, state);
