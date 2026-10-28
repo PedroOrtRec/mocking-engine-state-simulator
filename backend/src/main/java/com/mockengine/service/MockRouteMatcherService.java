@@ -43,9 +43,14 @@ public class MockRouteMatcherService {
         log.debug("Buscando mock para método: {} y subpath: {}", httpMethod, subpath);
 
         // 1. Obtenemos todos los mocks activos desde caché Redis o PostgreSQL
+        // Ordenamos por fecha de actualización descendente y luego ID descendente para que el mock
+        // creado o editado más recientemente tenga prioridad si existen rutas duplicadas.
         List<MockEndpoint> candidates = getActiveEndpoints()
                 .stream()
                 .filter(m -> m.getHttpMethod().equalsIgnoreCase(httpMethod))
+                .sorted(Comparator
+                        .comparing(MockEndpoint::getUpdatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(MockEndpoint::getId, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
 
         // 2. Comprobación rápida: coincidencia exacta

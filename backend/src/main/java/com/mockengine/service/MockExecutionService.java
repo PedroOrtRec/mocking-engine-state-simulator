@@ -54,6 +54,9 @@ public class MockExecutionService {
             List<String> schemaErrors = schemaValidationService.validatePayload(
                     endpoint.getRequestSchema(), requestBody);
             if (!schemaErrors.isEmpty()) {
+                String errorJson = "{\"title\":\"Schema Validation Failed\",\"status\":400}";
+                saveAuditLog(sessionKey, endpoint, httpMethod, subpath, HttpStatus.BAD_REQUEST.value(),
+                        startTime, request, requestBody, errorJson);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(Map.of(
@@ -65,12 +68,21 @@ public class MockExecutionService {
         }
 
         // 3. Aplicar latencia móvil simulada (3G / 4G con Virtual Threads)
-        networkSimulationService.applyLatency(endpoint.getDelayMs());
+        long effectiveDelayMs = endpoint.getDelayMs() != null ? endpoint.getDelayMs() : 0L;
+        networkSimulationService.applyLatency(effectiveDelayMs);
 
         // 4. Inyección de caos / fallo aleatorio
-        if (networkSimulationService.shouldSimulateFailure(endpoint.getErrorRate())) {
+        double effectiveErrorRate = endpoint.getErrorRate() != null ? endpoint.getErrorRate() : 0.0;
+        if (networkSimulationService.shouldSimulateFailure(effectiveErrorRate)) {
             int failStatus = endpoint.getFailureStatusCode() != null ? endpoint.getFailureStatusCode() : 500;
-            return buildErrorResponse(HttpStatus.valueOf(failStatus), 
+            HttpStatus status = HttpStatus.valueOf(failStatus);
+            String chaosErrorJson = String.format(
+                    "{\"status\":%d,\"error\":\"%s\",\"message\":\"Simulación de fallo aleatorio del sistema (Chaos Engineering)\"}",
+                    status.value(), status.getReasonPhrase()
+            );
+            saveAuditLog(sessionKey, endpoint, httpMethod, subpath, failStatus,
+                    startTime, request, requestBody, chaosErrorJson);
+            return buildErrorResponse(status, 
                     "Simulación de fallo aleatorio del sistema (Chaos Engineering)");
         }
 
@@ -99,9 +111,27 @@ public class MockExecutionService {
         headers.set("X-Mock-Engine", "true");
         headers.set("X-Session-ID", sessionKey);
 
-        long durationMs = System.currentTimeMillis() - startTime;
-
         // 7. Guardar log de auditoría en MongoDB
+        saveAuditLog(sessionKey, endpoint, httpMethod, subpath, endpoint.getStatusCode(),
+                startTime, request, requestBody, evaluatedBody);
+
+        return ResponseEntity.status(endpoint.getStatusCode())
+                .headers(headers)
+                .body(evaluatedBody);
+    }
+
+    private void saveAuditLog(
+            String sessionKey,
+            MockEndpoint endpoint,
+            String httpMethod,
+            String subpath,
+            Integer statusCode,
+            long startTime,
+            HttpServletRequest request,
+            String requestBody,
+            String responseBody
+    ) {
+        long durationMs = System.currentTimeMillis() - startTime;
         Map<String, String> requestHeaders = new HashMap<>();
         if (request.getHeaderNames() != null) {
             Collections.list(request.getHeaderNames()).forEach(headerName ->
@@ -113,17 +143,13 @@ public class MockExecutionService {
                 .ownerUsername(endpoint.getOwnerUsername())
                 .httpMethod(httpMethod)
                 .requestUri(subpath)
-                .statusCode(endpoint.getStatusCode())
+                .statusCode(statusCode)
                 .durationMs(durationMs)
                 .requestHeaders(requestHeaders)
                 .requestBody(requestBody)
-                .responseBody(evaluatedBody)
+                .responseBody(responseBody)
                 .timestamp(Instant.now())
                 .build());
-
-        return ResponseEntity.status(endpoint.getStatusCode())
-                .headers(headers)
-                .body(evaluatedBody);
     }
 
     private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String detail) {

@@ -149,4 +149,39 @@ class MockExecutionServiceTest {
 
         verify(stateManagementService).applyStateMutations("sess-purchase-1", "{\"balance\": {\"$inc\": -25}}");
     }
+
+    @Test
+    @DisplayName("Debe simular fallo HTTP cuando errorRate es 1.0 (100%), guardar el log de auditoría y no mutar el estado")
+    void executeMock_SimulatesChaosFailureAndLogsInMongo() {
+        MockEndpoint endpoint = MockEndpoint.builder()
+                .id(6L)
+                .name("Failing Endpoint")
+                .httpMethod("GET")
+                .pathPattern("/api/fail")
+                .statusCode(200)
+                .errorRate(1.0)
+                .failureStatusCode(503)
+                .stateUpdates("{\"count\": {\"$inc\": 1}}")
+                .ownerUsername("admin")
+                .delayMs(0L)
+                .build();
+
+        MatchResult matchResult = MatchResult.builder()
+                .endpoint(endpoint)
+                .pathVariables(Map.of())
+                .build();
+
+        when(request.getHeader("X-Session-ID")).thenReturn("admin:pruebaestado");
+        when(routeMatcherService.findMatch("GET", "/api/fail")).thenReturn(Optional.of(matchResult));
+        when(networkSimulationService.shouldSimulateFailure(1.0)).thenReturn(true);
+
+        ResponseEntity<?> response = executionService.executeMock("GET", "/api/fail", request, null);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        verify(stateManagementService, never()).applyStateMutations(anyString(), anyString());
+
+        ArgumentCaptor<RequestAuditLogDocument> captor = ArgumentCaptor.forClass(RequestAuditLogDocument.class);
+        verify(auditLogMongoRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatusCode()).isEqualTo(503);
+    }
 }

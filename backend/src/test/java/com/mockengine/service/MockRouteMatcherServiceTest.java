@@ -47,4 +47,35 @@ class MockRouteMatcherServiceTest {
         assertThat(result.get().getEndpoint().getId()).isEqualTo(1L);
         assertThat(result.get().getPathVariables()).containsEntry("id", "42");
     }
+
+    @Test
+    @DisplayName("Debe priorizar el endpoint más reciente cuando existen rutas activas duplicadas")
+    void shouldPrioritizeNewestEndpointOnDuplicateRoute() {
+        MockEndpoint older = MockEndpoint.builder()
+                .id(1L)
+                .name("Older Endpoint")
+                .httpMethod("GET")
+                .pathPattern("/api/")
+                .errorRate(0.0)
+                .active(true)
+                .build();
+
+        MockEndpoint newer = MockEndpoint.builder()
+                .id(6L)
+                .name("Newer Failing Endpoint")
+                .httpMethod("GET")
+                .pathPattern("/api/")
+                .errorRate(1.0)
+                .active(true)
+                .build();
+
+        when(mockEndpointRepository.findByActiveTrue()).thenReturn(List.of(older, newer));
+
+        Optional<MockRouteMatcherService.MatchResult> result =
+                routeMatcherService.findMatch("GET", "/api/");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getEndpoint().getId()).isEqualTo(6L);
+        assertThat(result.get().getEndpoint().getErrorRate()).isEqualTo(1.0);
+    }
 }
