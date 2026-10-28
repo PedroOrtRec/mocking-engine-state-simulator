@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   serializeRulesToJson,
   parseJsonToRules,
+  extractPathParams,
+  extractSchemaFields,
   type StateMutationRule,
 } from './mutation-rules';
 
@@ -62,5 +64,62 @@ describe('mutation-rules utility', () => {
     expect(parseJsonToRules(undefined)).toEqual([]);
     expect(parseJsonToRules('')).toEqual([]);
     expect(parseJsonToRules('invalid-json')).toEqual([]);
+  });
+
+  it('serializeRulesToJson y parseJsonToRules: preservan $type cuando un placeholder tiene tipo explícito (number, boolean, json)', () => {
+    const rules: StateMutationRule[] = [
+      { id: '1', property: 'lastUserId', op: 'set', valueType: 'number', value: '{{path.id}}' },
+      { id: '2', property: 'scores', op: 'push', valueType: 'number', value: '{{body.score}}' },
+    ];
+
+    const json = serializeRulesToJson(rules);
+    expect(JSON.parse(json!)).toEqual({
+      lastUserId: { $set: '{{path.id}}', $type: 'number' },
+      scores: { $push: '{{body.score}}', $type: 'number' },
+    });
+
+    const parsedBack = parseJsonToRules(json);
+    expect(parsedBack).toHaveLength(2);
+    expect(parsedBack[0]).toMatchObject({
+      property: 'lastUserId',
+      op: 'set',
+      valueType: 'number',
+      value: '{{path.id}}',
+    });
+    expect(parsedBack[1]).toMatchObject({
+      property: 'scores',
+      op: 'push',
+      valueType: 'number',
+      value: '{{body.score}}',
+    });
+  });
+
+  it('extractPathParams y extractSchemaFields: detectan parámetros {param} y campos del JSON Schema recursivamente', () => {
+    expect(extractPathParams('/api/v1/users/{userId}/orders/{orderId}')).toEqual([
+      'userId',
+      'orderId',
+    ]);
+    expect(extractPathParams('/api/v1/static')).toEqual([]);
+
+    const schema = JSON.stringify({
+      type: 'object',
+      properties: {
+        amount: { type: 'number' },
+        isVip: { type: 'boolean' },
+        customer: {
+          type: 'object',
+          properties: {
+            email: { type: 'string' },
+          },
+        },
+      },
+    });
+
+    expect(extractSchemaFields(schema)).toEqual([
+      { path: 'amount', valueType: 'number' },
+      { path: 'isVip', valueType: 'boolean' },
+      { path: 'customer', valueType: 'json' },
+      { path: 'customer.email', valueType: 'string' },
+    ]);
   });
 });

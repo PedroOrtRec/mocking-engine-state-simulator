@@ -165,4 +165,46 @@ describe('EndpointFormModal Component', () => {
       expect(handleClose).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('debe detectar parámetros {param} y campos del requestSchema mostrando chips interactivos en las reglas', async () => {
+    const user = userEvent.setup();
+    const handleClose = vi.fn();
+
+    const initialEndpoint: MockEndpoint = {
+      id: 9,
+      name: 'Actualizar saldo de usuario',
+      httpMethod: 'POST',
+      pathPattern: '/api/v1/users/{userId}',
+      statusCode: 200,
+      responseBody: '{"ok": true}',
+      requestSchema: JSON.stringify({
+        type: 'object',
+        properties: {
+          amount: { type: 'number' },
+        },
+      }),
+      active: true,
+      ownerUsername: 'pedro',
+    };
+
+    renderWithClient(
+      <EndpointFormModal isOpen={true} onClose={handleClose} initialData={initialEndpoint} />
+    );
+
+    // Debe mostrar el badge de parámetro detectado bajo el input de ruta
+    expect(screen.getByText('Parámetros detectados:')).toBeInTheDocument();
+
+    // Añadir una regla de estado
+    await user.click(screen.getByRole('button', { name: /añadir regla de estado/i }));
+
+    // Al pulsar el chip de {{body.amount}} (number), debe rellenar el valor y ajustar el tipo a number
+    const bodyChipBtn = screen.getByRole('button', { name: /\{\{body\.amount\}\}/i });
+    await user.click(bodyChipBtn);
+
+    const valInput = screen.getByLabelText(/^Valor 1$/i) as HTMLInputElement;
+    expect(valInput.value).toBe('{{body.amount}}');
+
+    const valTypeSelect = screen.getByLabelText(/^Tipo de valor 1$/i) as HTMLSelectElement;
+    expect(valTypeSelect.value).toBe('number');
+  });
 });

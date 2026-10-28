@@ -9,6 +9,87 @@ export interface StateMutationRule {
   value: string;
 }
 
+export interface SchemaFieldHint {
+  path: string;
+  valueType: StateValueType;
+}
+
+const PLACEHOLDER_REGEX = /\{\{[a-zA-Z0-9_.]+\}\}/;
+const VALID_VALUE_TYPES = new Set<StateValueType>(['string', 'number', 'boolean', 'json']);
+
+export function isTemplatePlaceholder(val: string): boolean {
+  return PLACEHOLDER_REGEX.test(val);
+}
+
+/**
+ * Extrae automáticamente los nombres de los parámetros de ruta definidos entre llaves {param}
+ * Ej: "/api/v1/users/{userId}/orders/{orderId}" -> ["userId", "orderId"]
+ */
+export function extractPathParams(pathPattern: string): string[] {
+  if (!pathPattern) return [];
+  const matches = pathPattern.matchAll(/\{([a-zA-Z0-9_]+)\}/g);
+  const seen = new Set<string>();
+  const params: string[] = [];
+  for (const m of matches) {
+    const paramName = m[1];
+    if (paramName && !seen.has(paramName)) {
+      seen.add(paramName);
+      params.push(paramName);
+    }
+  }
+  return params;
+}
+
+function mapSchemaTypeToValueType(schemaType: unknown): StateValueType {
+  if (schemaType === 'number' || schemaType === 'integer') return 'number';
+  if (schemaType === 'boolean') return 'boolean';
+  if (schemaType === 'object' || schemaType === 'array') return 'json';
+  return 'string';
+}
+
+/**
+ * Extrae recursivamente los campos declarados en un JSON Schema (properties) junto con su tipo sugerido.
+ */
+export function extractSchemaFields(requestSchema?: string): SchemaFieldHint[] {
+  if (!requestSchema || !requestSchema.trim()) return [];
+  try {
+    const parsed = JSON.parse(requestSchema);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return [];
+    }
+
+    const hints: SchemaFieldHint[] = [];
+
+    function traverse(node: Record<string, unknown>, prefix: string, depth: number) {
+      if (depth > 3) return;
+      const props = node.properties;
+      if (typeof props !== 'object' || props === null || Array.isArray(props)) {
+        return;
+      }
+
+      for (const [propName, propDef] of Object.entries(props as Record<string, unknown>)) {
+        const fullPath = prefix ? `${prefix}.${propName}` : propName;
+        if (typeof propDef === 'object' && propDef !== null && !Array.isArray(propDef)) {
+          const defObj = propDef as Record<string, unknown>;
+          const vType = mapSchemaTypeToValueType(defObj.type);
+          hints.push({ path: fullPath, valueType: vType });
+
+          if (defObj.type === 'object' && defObj.properties) {
+            traverse(defObj, fullPath, depth + 1);
+          }
+        } else {
+          hints.push({ path: fullPath, valueType: 'string' });
+        }
+      }
+    }
+
+    traverse(parsed as Record<string, unknown>, '', 1);
+    return hints;
+  } catch {
+    return [];
+  }
+}
+
 function parseVal(val: string, type: StateValueType): unknown {
   const trimmed = val.trim();
   if (type === 'number') {
@@ -51,6 +132,8 @@ export function serializeRulesToJson(rules: StateMutationRule[]): string | undef
 
   for (const rule of validRules) {
     const prop = rule.property.trim();
+    const trimmedVal = rule.value.trim();
+    const hasPlaceholder = isTemplatePlaceholder(trimmedVal);
 
     if (rule.op === 'unset') {
       result[prop] = { $unset: true };
@@ -58,16 +141,23 @@ export function serializeRulesToJson(rules: StateMutationRule[]): string | undef
       result[prop] = { $toggle: true };
     } else if (rule.op === 'inc' || rule.op === 'dec') {
       const opKey = rule.op === 'inc' ? '$inc' : '$dec';
-      const trimmed = rule.value.trim();
-      const num = Number(trimmed);
+      const num = Number(trimmedVal);
       result[prop] = {
-        [opKey]: !Number.isNaN(num) && trimmed !== '' ? num : trimmed || 1,
+        [opKey]: !Number.isNaN(num) && trimmedVal !== '' ? num : trimmedVal || 1,
       };
     } else if (rule.op === 'push') {
-      result[prop] = { $push: parseVal(rule.value, rule.valueType) };
+      if (hasPlaceholder && rule.valueType !== 'string') {
+        result[prop] = { $push: trimmedVal, $type: rule.valueType };
+      } else {
+        result[prop] = { $push: parseVal(rule.value, rule.valueType) };
+      }
     } else {
       // op === 'set'
-      result[prop] = parseVal(rule.value, rule.valueType);
+      if (hasPlaceholder && rule.valueType !== 'string') {
+        result[prop] = { $set: trimmedVal, $type: rule.valueType };
+      } else {
+        result[prop] = parseVal(rule.value, rule.valueType);
+      }
     }
   }
 
@@ -93,6 +183,11 @@ export function parseJsonToRules(stateUpdates?: string): StateMutationRule[] {
 
       if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
         const obj = val as Record<string, unknown>;
+        const explicitType =
+          typeof obj.$type === 'string' && VALID_VALUE_TYPES.has(obj.$type as StateValueType)
+            ? (obj.$type as StateValueType)
+            : undefined;
+
         if ('$unset' in obj) {
           rules.push({ id, property: key, op: 'unset', valueType: 'string', value: '' });
           continue;
@@ -111,14 +206,26 @@ export function parseJsonToRules(stateUpdates?: string): StateMutationRule[] {
         }
         if ('$push' in obj) {
           const pushVal = obj.$push;
-          const { valueType, value } = formatVal(pushVal);
-          rules.push({ id, property: key, op: 'push', valueType, value });
+          const formatted = formatVal(pushVal);
+          rules.push({
+            id,
+            property: key,
+            op: 'push',
+            valueType: explicitType ?? formatted.valueType,
+            value: formatted.value,
+          });
           continue;
         }
         if ('$set' in obj) {
           const setVal = obj.$set;
-          const { valueType, value } = formatVal(setVal);
-          rules.push({ id, property: key, op: 'set', valueType, value });
+          const formatted = formatVal(setVal);
+          rules.push({
+            id,
+            property: key,
+            op: 'set',
+            valueType: explicitType ?? formatted.valueType,
+            value: formatted.value,
+          });
           continue;
         }
       }

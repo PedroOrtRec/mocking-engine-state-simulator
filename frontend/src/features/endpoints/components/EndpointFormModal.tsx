@@ -9,6 +9,9 @@ import {
 import {
   serializeRulesToJson,
   parseJsonToRules,
+  extractPathParams,
+  extractSchemaFields,
+  isTemplatePlaceholder,
   type StateMutationRule,
   type StateMutationOp,
   type StateValueType,
@@ -211,6 +214,10 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
   };
 
   const serializedPreview = serializeRulesToJson(rules);
+  const detectedPathParams = extractPathParams(pathPattern);
+  const detectedSchemaFields = extractSchemaFields(requestSchema);
+  const hasDetectedVariables =
+    detectedPathParams.length > 0 || detectedSchemaFields.length > 0;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -367,6 +374,19 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
               placeholder="/api/v1/users/{id}"
               required
             />
+            {detectedPathParams.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                <span className="text-[10px] text-slate-400">Parámetros detectados:</span>
+                {detectedPathParams.map((param) => (
+                  <span
+                    key={param}
+                    className="px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/80 text-[10px] font-mono text-indigo-300"
+                  >
+                    {`{{path.${param}}}`}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -407,7 +427,7 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
 
           <p className="text-[11px] text-slate-400">
             Modifica automáticamente las variables del estado de la sesión (PostgreSQL / Redis) tras responder esta petición.
-            Soporta operadores atómicos e interpolación <code className="text-indigo-300 font-mono">{'{{body.*}}'}</code>.
+            Soporta operadores atómicos e interpolación <code className="text-indigo-300 font-mono">{'{{path.*}}'}</code> y <code className="text-indigo-300 font-mono">{'{{body.*}}'}</code>.
           </p>
 
           {rules.length === 0 ? (
@@ -419,122 +439,171 @@ function EndpointFormContent({ initialData, onClose }: ContentProps) {
               {rules.map((rule, idx) => {
                 const isToggleOrUnset = rule.op === 'toggle' || rule.op === 'unset';
                 const showValueType = rule.op === 'set' || rule.op === 'push';
+                const isBooleanSelect =
+                  rule.valueType === 'boolean' &&
+                  showValueType &&
+                  !isTemplatePlaceholder(rule.value);
 
                 return (
                   <div
                     key={rule.id}
-                    className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs"
+                    className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-2"
                   >
-                    {/* Propiedad */}
-                    <div className="w-full sm:w-1/4">
-                      <label htmlFor={`rule-prop-${rule.id}`} className="sr-only">
-                        Propiedad {idx + 1}
-                      </label>
-                      <input
-                        id={`rule-prop-${rule.id}`}
-                        type="text"
-                        value={rule.property}
-                        onChange={(e) => handleUpdateRule(rule.id, { property: e.target.value })}
-                        placeholder="Propiedad (ej. balance)"
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
-                      />
-                    </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      {/* Propiedad */}
+                      <div className="w-full sm:w-1/4">
+                        <label htmlFor={`rule-prop-${rule.id}`} className="sr-only">
+                          Propiedad {idx + 1}
+                        </label>
+                        <input
+                          id={`rule-prop-${rule.id}`}
+                          type="text"
+                          value={rule.property}
+                          onChange={(e) => handleUpdateRule(rule.id, { property: e.target.value })}
+                          placeholder="Propiedad (ej. balance)"
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
+                        />
+                      </div>
 
-                    {/* Operación */}
-                    <div className="w-full sm:w-1/4">
-                      <label htmlFor={`rule-op-${rule.id}`} className="sr-only">
-                        Operación {idx + 1}
-                      </label>
-                      <select
-                        id={`rule-op-${rule.id}`}
-                        value={rule.op}
-                        onChange={(e) =>
-                          handleUpdateRule(rule.id, { op: e.target.value as StateMutationOp })
-                        }
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-indigo-300 font-medium focus:outline-none focus:border-indigo-500 text-xs"
-                      >
-                        <option value="set">Asignar (=)</option>
-                        <option value="inc">Incrementar (+ $inc)</option>
-                        <option value="dec">Decrementar (- $dec)</option>
-                        <option value="toggle">Invertir booleano (! $toggle)</option>
-                        <option value="push">Añadir a lista ($push)</option>
-                        <option value="unset">Eliminar ($unset)</option>
-                      </select>
-                    </div>
-
-                    {/* Tipo de valor (solo para set o push) */}
-                    {showValueType && (
-                      <div className="w-full sm:w-1/5">
-                        <label htmlFor={`rule-valtype-${rule.id}`} className="sr-only">
-                          Tipo de valor {idx + 1}
+                      {/* Operación */}
+                      <div className="w-full sm:w-1/4">
+                        <label htmlFor={`rule-op-${rule.id}`} className="sr-only">
+                          Operación {idx + 1}
                         </label>
                         <select
-                          id={`rule-valtype-${rule.id}`}
-                          value={rule.valueType}
+                          id={`rule-op-${rule.id}`}
+                          value={rule.op}
                           onChange={(e) =>
-                            handleUpdateRule(rule.id, { valueType: e.target.value as StateValueType })
+                            handleUpdateRule(rule.id, { op: e.target.value as StateMutationOp })
                           }
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-slate-300 focus:outline-none focus:border-indigo-500 text-xs"
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-indigo-300 font-medium focus:outline-none focus:border-indigo-500 text-xs"
                         >
-                          <option value="string">Texto / Var</option>
-                          <option value="number">Número</option>
-                          <option value="boolean">Booleano</option>
-                          <option value="json">JSON</option>
+                          <option value="set">Asignar (=)</option>
+                          <option value="inc">Incrementar (+ $inc)</option>
+                          <option value="dec">Decrementar (- $dec)</option>
+                          <option value="toggle">Invertir booleano (! $toggle)</option>
+                          <option value="push">Añadir a lista ($push)</option>
+                          <option value="unset">Eliminar ($unset)</option>
                         </select>
                       </div>
-                    )}
 
-                    {/* Valor */}
-                    <div className="flex-1">
-                      {isToggleOrUnset ? (
-                        <span className="text-[11px] text-slate-500 italic block py-1.5 px-2">
-                          No requiere valor
-                        </span>
-                      ) : rule.valueType === 'boolean' && showValueType ? (
-                        <div>
-                          <label htmlFor={`rule-val-bool-${rule.id}`} className="sr-only">
-                            Valor booleano {idx + 1}
+                      {/* Tipo de valor (solo para set o push) */}
+                      {showValueType && (
+                        <div className="w-full sm:w-1/5">
+                          <label htmlFor={`rule-valtype-${rule.id}`} className="sr-only">
+                            Tipo de valor {idx + 1}
                           </label>
                           <select
-                            id={`rule-val-bool-${rule.id}`}
-                            value={rule.value === 'false' ? 'false' : 'true'}
-                            onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                            id={`rule-valtype-${rule.id}`}
+                            value={rule.valueType}
+                            onChange={(e) =>
+                              handleUpdateRule(rule.id, {
+                                valueType: e.target.value as StateValueType,
+                              })
+                            }
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-slate-300 focus:outline-none focus:border-indigo-500 text-xs"
                           >
-                            <option value="true">true</option>
-                            <option value="false">false</option>
+                            <option value="string">Texto / Var</option>
+                            <option value="number">Número</option>
+                            <option value="boolean">Booleano</option>
+                            <option value="json">JSON</option>
                           </select>
                         </div>
-                      ) : (
-                        <div>
-                          <label htmlFor={`rule-val-text-${rule.id}`} className="sr-only">
-                            Valor {idx + 1}
-                          </label>
-                          <input
-                            id={`rule-val-text-${rule.id}`}
-                            type="text"
-                            value={rule.value}
-                            onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
-                            placeholder={
-                              rule.op === 'inc' || rule.op === 'dec'
-                                ? 'ej. 1 o {{body.amount}}'
-                                : 'ej. valor o {{body.name}}'
-                            }
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
-                          />
-                        </div>
                       )}
+
+                      {/* Valor */}
+                      <div className="flex-1">
+                        {isToggleOrUnset ? (
+                          <span className="text-[11px] text-slate-500 italic block py-1.5 px-2">
+                            No requiere valor
+                          </span>
+                        ) : isBooleanSelect ? (
+                          <div>
+                            <label htmlFor={`rule-val-bool-${rule.id}`} className="sr-only">
+                              Valor booleano {idx + 1}
+                            </label>
+                            <select
+                              id={`rule-val-bool-${rule.id}`}
+                              value={rule.value === 'false' ? 'false' : 'true'}
+                              onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                            >
+                              <option value="true">true</option>
+                              <option value="false">false</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div>
+                            <label htmlFor={`rule-val-text-${rule.id}`} className="sr-only">
+                              Valor {idx + 1}
+                            </label>
+                            <input
+                              id={`rule-val-text-${rule.id}`}
+                              type="text"
+                              value={rule.value}
+                              onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
+                              placeholder={
+                                rule.op === 'inc' || rule.op === 'dec'
+                                  ? 'ej. 1 o {{body.amount}}'
+                                  : 'ej. valor o {{body.name}}'
+                              }
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Botón eliminar fila */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRule(rule.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors self-end sm:self-center"
+                        title="Eliminar regla"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
 
-                    {/* Botón eliminar fila */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveRule(rule.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded transition-colors self-end sm:self-center"
-                      title="Eliminar regla"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {/* Chips interactivos de variables detectadas (Ruta y Request Schema) */}
+                    {!isToggleOrUnset && hasDetectedVariables && (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-800/60">
+                        <span className="text-[10px] text-slate-400">Insertar variable:</span>
+                        {detectedPathParams.map((param) => (
+                          <button
+                            key={`path-${param}`}
+                            type="button"
+                            onClick={() =>
+                              handleUpdateRule(rule.id, {
+                                value: `{{path.${param}}}`,
+                              })
+                            }
+                            className="px-1.5 py-0.5 rounded bg-indigo-950/50 hover:bg-indigo-900/70 border border-indigo-800/70 text-[10px] font-mono text-indigo-300 transition-colors"
+                            title={`Usar parámetro de ruta {{path.${param}}}`}
+                          >
+                            {`{{path.${param}}}`}
+                          </button>
+                        ))}
+                        {detectedSchemaFields.map((field) => (
+                          <button
+                            key={`body-${field.path}`}
+                            type="button"
+                            onClick={() =>
+                              handleUpdateRule(rule.id, {
+                                value: `{{body.${field.path}}}`,
+                                valueType: showValueType ? field.valueType : rule.valueType,
+                              })
+                            }
+                            className="px-1.5 py-0.5 rounded bg-emerald-950/50 hover:bg-emerald-900/70 border border-emerald-800/70 text-[10px] font-mono text-emerald-300 transition-colors"
+                            title={`Usar campo de request body {{body.${field.path}}} (${field.valueType})`}
+                          >
+                            {`{{body.${field.path}}}`}
+                            <span className="ml-1 text-[9px] text-emerald-400/70">
+                              ({field.valueType})
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
