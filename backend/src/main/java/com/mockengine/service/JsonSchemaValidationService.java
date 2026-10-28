@@ -21,8 +21,12 @@ public class JsonSchemaValidationService {
     private final ObjectMapper objectMapper;
     private final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
 
+    private static final Set<String> SCHEMA_ROOT_TYPES =
+            Set.of("object", "array", "string", "number", "integer", "boolean");
+
     /**
      * Valida el payload recibido contra el esquema JSON definido.
+     * Si el campo almacena un JSON de ejemplo plano (sin estructura de JSON Schema), no bloquea la petición.
      * Retorna lista de errores de validación, o lista vacía si es válido.
      */
     public List<String> validatePayload(String schemaJson, String requestBody) {
@@ -31,7 +35,12 @@ public class JsonSchemaValidationService {
         }
 
         try {
-            JsonSchema schema = schemaFactory.getSchema(schemaJson);
+            JsonNode schemaNode = objectMapper.readTree(schemaJson);
+            if (!isJsonSchemaDefinition(schemaNode)) {
+                return List.of(); // Es un body JSON de ejemplo para extracción de variables {{body.*}}
+            }
+
+            JsonSchema schema = schemaFactory.getSchema(schemaNode);
             JsonNode bodyNode = (requestBody == null || requestBody.isBlank()) 
                     ? objectMapper.createObjectNode() 
                     : objectMapper.readTree(requestBody);
@@ -45,5 +54,19 @@ public class JsonSchemaValidationService {
             log.error("Error al validar contra JSON Schema: {}", e.getMessage());
             return List.of("Error interno validando JSON Schema: " + e.getMessage());
         }
+    }
+
+    private boolean isJsonSchemaDefinition(JsonNode node) {
+        if (node == null || !node.isObject()) {
+            return false;
+        }
+        if (node.has("$schema")) {
+            return true;
+        }
+        JsonNode typeNode = node.get("type");
+        if (typeNode != null && typeNode.isTextual() && SCHEMA_ROOT_TYPES.contains(typeNode.asText())) {
+            return node.has("properties") || node.has("required") || node.has("items") || node.has("additionalProperties");
+        }
+        return false;
     }
 }

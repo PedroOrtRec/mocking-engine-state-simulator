@@ -123,6 +123,21 @@ describe('mutation-rules utility', () => {
       { path: 'customer.email', valueType: 'string' },
     ]);
 
+    // También debe capturar campos desde un Body de la Petición JSON de ejemplo directo
+    const plainBodyExample = JSON.stringify({
+      price: 120,
+      couponActive: true,
+      buyer: {
+        username: 'pedro',
+      },
+    });
+    expect(extractSchemaFields(plainBodyExample)).toEqual([
+      { path: 'price', valueType: 'number' },
+      { path: 'couponActive', valueType: 'boolean' },
+      { path: 'buyer', valueType: 'json' },
+      { path: 'buyer.username', valueType: 'string' },
+    ]);
+
     expect(extractStateProperties('{"theme":"dark","count":1,"active":true}')).toEqual([
       { name: 'theme', valueType: 'string' },
       { name: 'count', valueType: 'number' },

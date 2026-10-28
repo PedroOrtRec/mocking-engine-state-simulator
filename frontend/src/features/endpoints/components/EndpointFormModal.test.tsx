@@ -250,4 +250,35 @@ describe('EndpointFormModal Component', () => {
     const valTypeSelect = screen.getByLabelText(/^Tipo de valor 1$/i) as HTMLSelectElement;
     expect(valTypeSelect.value).toBe('number');
   });
+
+  it('debe asignar el código HTTP recomendado al cambiar el Método HTTP y capturar campos del Body de la Petición en los chips', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<EndpointFormModal isOpen={true} onClose={vi.fn()} />);
+
+    const methodSelect = screen.getByLabelText(/método http/i) as HTMLSelectElement;
+    const statusInput = screen.getByLabelText(/código http éxito/i) as HTMLInputElement;
+
+    expect(statusInput.value).toBe('200');
+
+    await user.selectOptions(methodSelect, 'POST');
+    expect(statusInput.value).toBe('201');
+
+    await user.selectOptions(methodSelect, 'DELETE');
+    expect(statusInput.value).toBe('204');
+
+    // Escribir un JSON de ejemplo en la 4ª fila (Body de la Petición)
+    const reqBodyTextarea = screen.getByLabelText(/body de la petición/i);
+    fireEvent.change(reqBodyTextarea, {
+      target: { value: '{"quantity": 3, "sku": "ITEM-9"}' },
+    });
+
+    // Añadir regla de estado y comprobar que aparece el chip {{body.quantity}} (number)
+    await user.click(screen.getByRole('button', { name: /añadir regla de estado/i }));
+
+    const qtyChip = screen.getByRole('button', { name: /\{\{body\.quantity\}\}/i });
+    await user.click(qtyChip);
+
+    const valInput = screen.getByLabelText(/^Valor 1$/i) as HTMLInputElement;
+    expect(valInput.value).toBe('{{body.quantity}}');
+  });
 });

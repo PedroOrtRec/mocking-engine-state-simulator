@@ -53,42 +53,69 @@ function mapSchemaTypeToValueType(schemaType: unknown): StateValueType {
 }
 
 /**
- * Extrae recursivamente los campos declarados en un JSON Schema (properties) junto con su tipo sugerido.
+ * Extrae recursivamente los campos declarados tanto en un JSON de ejemplo del Body de la Petición
+ * (ej. {"amount": 50, "user": {"name": "Ana"}}) como en un JSON Schema (properties), junto con su tipo sugerido.
  */
-export function extractSchemaFields(requestSchema?: string): SchemaFieldHint[] {
-  if (!requestSchema || !requestSchema.trim()) return [];
+export function extractSchemaFields(requestBodyOrSchema?: string): SchemaFieldHint[] {
+  if (!requestBodyOrSchema || !requestBodyOrSchema.trim()) return [];
   try {
-    const parsed = JSON.parse(requestSchema);
+    const parsed = JSON.parse(requestBodyOrSchema);
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return [];
     }
 
+    const root = parsed as Record<string, unknown>;
     const hints: SchemaFieldHint[] = [];
 
-    function traverse(node: Record<string, unknown>, prefix: string, depth: number) {
-      if (depth > 3) return;
-      const props = node.properties;
-      if (typeof props !== 'object' || props === null || Array.isArray(props)) {
-        return;
+    // Caso 1: Formato JSON Schema ({ type: "object", properties: { ... } })
+    const isJsonSchema =
+      root.type === 'object' &&
+      typeof root.properties === 'object' &&
+      root.properties !== null &&
+      !Array.isArray(root.properties);
+
+    if (isJsonSchema) {
+      function traverseSchema(node: Record<string, unknown>, prefix: string, depth: number) {
+        if (depth > 3) return;
+        const props = node.properties;
+        if (typeof props !== 'object' || props === null || Array.isArray(props)) {
+          return;
+        }
+
+        for (const [propName, propDef] of Object.entries(props as Record<string, unknown>)) {
+          const fullPath = prefix ? `${prefix}.${propName}` : propName;
+          if (typeof propDef === 'object' && propDef !== null && !Array.isArray(propDef)) {
+            const defObj = propDef as Record<string, unknown>;
+            const vType = mapSchemaTypeToValueType(defObj.type);
+            hints.push({ path: fullPath, valueType: vType });
+
+            if (defObj.type === 'object' && defObj.properties) {
+              traverseSchema(defObj, fullPath, depth + 1);
+            }
+          } else {
+            hints.push({ path: fullPath, valueType: 'string' });
+          }
+        }
       }
 
-      for (const [propName, propDef] of Object.entries(props as Record<string, unknown>)) {
-        const fullPath = prefix ? `${prefix}.${propName}` : propName;
-        if (typeof propDef === 'object' && propDef !== null && !Array.isArray(propDef)) {
-          const defObj = propDef as Record<string, unknown>;
-          const vType = mapSchemaTypeToValueType(defObj.type);
-          hints.push({ path: fullPath, valueType: vType });
+      traverseSchema(root, '', 1);
+      return hints;
+    }
 
-          if (defObj.type === 'object' && defObj.properties) {
-            traverse(defObj, fullPath, depth + 1);
-          }
-        } else {
-          hints.push({ path: fullPath, valueType: 'string' });
+    // Caso 2: Body de petición JSON directo (ej. { "amount": 50, "customer": { "email": "a@b.com" } })
+    function traverseBodyExample(obj: Record<string, unknown>, prefix: string, depth: number) {
+      if (depth > 3) return;
+      for (const [key, val] of Object.entries(obj)) {
+        const fullPath = prefix ? `${prefix}.${key}` : key;
+        const { valueType } = formatVal(val);
+        hints.push({ path: fullPath, valueType });
+        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+          traverseBodyExample(val as Record<string, unknown>, fullPath, depth + 1);
         }
       }
     }
 
-    traverse(parsed as Record<string, unknown>, '', 1);
+    traverseBodyExample(root, '', 1);
     return hints;
   } catch {
     return [];

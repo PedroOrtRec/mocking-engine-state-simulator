@@ -50,6 +50,14 @@ const NETWORK_PROFILES: readonly NetworkProfile[] = [
   { id: 'slow-3g', name: 'Slow 3G (600ms)', delayMs: 600, icon: AlertTriangle },
 ];
 
+const RECOMMENDED_STATUS_BY_METHOD: Record<HttpMethod, number> = {
+  GET: 200,
+  POST: 201,
+  PUT: 200,
+  PATCH: 200,
+  DELETE: 204,
+};
+
 function resolveProfileId(delayMs: number): NetworkProfileId {
   const match = NETWORK_PROFILES.find((p) => p.delayMs === delayMs);
   return match ? match.id : 'custom';
@@ -118,9 +126,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
   );
 
   // Tabs / Collapsibles
-  const [showAdvanced, setShowAdvanced] = useState(
-    Boolean(initialData?.responseHeaders || initialData?.requestSchema)
-  );
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(initialData?.responseHeaders));
 
   // Validation errors
   const [bodyError, setBodyError] = useState<string | null>(null);
@@ -136,6 +142,11 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
   const responseBodyId = useId();
   const responseHeadersId = useId();
   const requestSchemaId = useId();
+
+  const handleMethodChange = (newMethod: HttpMethod) => {
+    setHttpMethod(newMethod);
+    setStatusCode(RECOMMENDED_STATUS_BY_METHOD[newMethod]);
+  };
 
   const handleProfileSelect = (p: NetworkProfile) => {
     setSelectedProfileId(p.id);
@@ -182,7 +193,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
       JSON.parse(val);
       setSchemaError(null);
     } catch {
-      setSchemaError('El esquema debe tener formato JSON Schema válido');
+      setSchemaError('El body de la petición debe tener formato JSON válido');
     }
   };
 
@@ -340,26 +351,79 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Nombre y Estado HTTP */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="sm:col-span-2">
-            <label htmlFor={nameId} className="text-xs font-medium text-slate-300">
-              Nombre descriptivo
+        {/* 1ª FILA: Nombre descriptivo */}
+        <div>
+          <label htmlFor={nameId} className="text-xs font-medium text-slate-300">
+            Nombre descriptivo
+          </label>
+          <input
+            id={nameId}
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+            placeholder="ej. Obtener perfil de usuario"
+            required
+          />
+        </div>
+
+        {/* 2ª FILA: Patrón de Ruta */}
+        <div>
+          <label htmlFor={pathPatternId} className="text-xs font-medium text-slate-300">
+            Patrón de Ruta (/mock/**)
+          </label>
+          <input
+            id={pathPatternId}
+            type="text"
+            value={pathPattern}
+            onChange={(e) => setPathPattern(e.target.value)}
+            className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+            placeholder="/api/v1/users/{id}"
+            required
+          />
+          {detectedPathParams.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+              <span className="text-[10px] text-slate-400">Parámetros detectados:</span>
+              {detectedPathParams.map((param) => (
+                <span
+                  key={param}
+                  className="px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/80 text-[10px] font-mono text-indigo-300"
+                >
+                  {`{{path.${param}}}`}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 3ª FILA: Método HTTP y Código HTTP de Éxito */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor={httpMethodId} className="text-xs font-medium text-slate-300">
+              Método HTTP
             </label>
-            <input
-              id={nameId}
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-              placeholder="ej. Obtener perfil de usuario"
-              required
-            />
+            <select
+              id={httpMethodId}
+              value={httpMethod}
+              onChange={(e) => handleMethodChange(e.target.value as HttpMethod)}
+              className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+            </select>
           </div>
           <div>
-            <label htmlFor={statusCodeId} className="text-xs font-medium text-slate-300">
-              Código HTTP Éxito
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor={statusCodeId} className="text-xs font-medium text-slate-300">
+                Código HTTP Éxito
+              </label>
+              <span className="text-[10px] text-slate-500 font-mono">
+                Recomendado ({httpMethod}): {RECOMMENDED_STATUS_BY_METHOD[httpMethod]}
+              </span>
+            </div>
             <input
               id={statusCodeId}
               type="number"
@@ -373,73 +437,39 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
           </div>
         </div>
 
-        {/* Método y Patrón de Ruta */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label htmlFor={httpMethodId} className="text-xs font-medium text-slate-300">
-              Método HTTP
-            </label>
-            <select
-              id={httpMethodId}
-              value={httpMethod}
-              onChange={(e) => setHttpMethod(e.target.value as HttpMethod)}
-              className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
-            >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="PATCH">PATCH</option>
-              <option value="DELETE">DELETE</option>
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor={pathPatternId} className="text-xs font-medium text-slate-300">
-              Patrón de Ruta (/mock/**)
-            </label>
-            <input
-              id={pathPatternId}
-              type="text"
-              value={pathPattern}
-              onChange={(e) => setPathPattern(e.target.value)}
-              className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-              placeholder="/api/v1/users/{id}"
-              required
-            />
-            {detectedPathParams.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-                <span className="text-[10px] text-slate-400">Parámetros detectados:</span>
-                {detectedPathParams.map((param) => (
-                  <span
-                    key={param}
-                    className="px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/80 text-[10px] font-mono text-indigo-300"
-                  >
-                    {`{{path.${param}}}`}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Cuerpo de respuesta JSON */}
+        {/* 4ª FILA: Body de la Petición (JSON) */}
         <div>
-          <div className="flex justify-between items-center mb-1">
-            <label htmlFor={responseBodyId} className="text-xs font-medium text-slate-300">
-              Cuerpo de la Respuesta (JSON)
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor={requestSchemaId} className="text-xs font-medium text-slate-300 flex items-center gap-1">
+              <span>Body de la Petición (JSON — Opcional)</span>
+              <HelpCircle className="h-3 w-3 text-slate-500" />
             </label>
-            {bodyError && <span className="text-xs text-rose-400">{bodyError}</span>}
+            {schemaError && <span className="text-xs text-rose-400">{schemaError}</span>}
           </div>
           <textarea
-            id={responseBodyId}
-            rows={5}
-            value={responseBody}
-            onChange={(e) => handleBodyChange(e.target.value)}
-            className="w-full font-mono text-xs bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 focus:outline-none focus:border-indigo-500"
-            required
+            id={requestSchemaId}
+            rows={3}
+            value={requestSchema}
+            onChange={(e) => handleSchemaChange(e.target.value)}
+            placeholder={'{\n  "amount": 50,\n  "username": "pedro"\n}'}
+            className="w-full font-mono text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
           />
+          {detectedSchemaFields.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+              <span className="text-[10px] text-slate-400">Campos del body detectados:</span>
+              {detectedSchemaFields.map((field) => (
+                <span
+                  key={field.path}
+                  className="px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/80 text-[10px] font-mono text-emerald-300"
+                >
+                  {`{{body.${field.path}}}`} ({field.valueType})
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* SECCIÓN INTEGRADA: MUTACIONES DE ESTADO DE SESIÓN (OPCIÓN 3A) */}
+        {/* 5ª FILA: MUTACIONES DE ESTADO DE SESIÓN (OPCIÓN 3A) */}
         <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold text-indigo-400">
@@ -711,7 +741,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
           )}
         </div>
 
-        {/* SECCIÓN INTEGRADA: SIMULACIÓN DE RED & CAOS */}
+        {/* 6ª FILA: SIMULACIÓN DE RED & CAOS */}
         <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-4">
           <div className="flex items-center gap-2 text-xs font-bold text-indigo-400">
             <Flame className="h-4 w-4 text-amber-400" />
@@ -808,7 +838,25 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
           )}
         </div>
 
-        {/* Sección Avanzada Opcional (Cabeceras y Esquema) */}
+        {/* 7ª FILA: Cuerpo de la Respuesta (JSON) */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label htmlFor={responseBodyId} className="text-xs font-medium text-slate-300">
+              Cuerpo de la Respuesta (JSON)
+            </label>
+            {bodyError && <span className="text-xs text-rose-400">{bodyError}</span>}
+          </div>
+          <textarea
+            id={responseBodyId}
+            rows={5}
+            value={responseBody}
+            onChange={(e) => handleBodyChange(e.target.value)}
+            className="w-full font-mono text-xs bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 focus:outline-none focus:border-indigo-500"
+            required
+          />
+        </div>
+
+        {/* Sección Avanzada Opcional (Cabeceras) */}
         <div>
           <button
             type="button"
@@ -816,7 +864,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
             className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
           >
             <Settings className="h-3.5 w-3.5" />
-            <span>{showAdvanced ? 'Ocultar Opciones Avanzadas' : 'Ver Opciones Avanzadas (Cabeceras & Esquema)'}</span>
+            <span>{showAdvanced ? 'Ocultar Opciones Avanzadas' : 'Ver Opciones Avanzadas (Cabeceras HTTP)'}</span>
           </button>
 
           {showAdvanced && (
@@ -835,24 +883,6 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
                   value={responseHeaders}
                   onChange={(e) => handleHeadersChange(e.target.value)}
                   placeholder={'{\n  "X-Custom-Header": "value"\n}'}
-                  className="w-full font-mono text-xs bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label htmlFor={requestSchemaId} className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                    <span>Esquema de Validación de Solicitud (JSON Schema)</span>
-                    <HelpCircle className="h-3 w-3 text-slate-500" />
-                  </label>
-                  {schemaError && <span className="text-xs text-rose-400">{schemaError}</span>}
-                </div>
-                <textarea
-                  id={requestSchemaId}
-                  rows={2}
-                  value={requestSchema}
-                  onChange={(e) => handleSchemaChange(e.target.value)}
-                  placeholder={'{\n  "type": "object",\n  "required": ["userId"]\n}'}
                   className="w-full font-mono text-xs bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
