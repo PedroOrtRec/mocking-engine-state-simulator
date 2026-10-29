@@ -26,8 +26,8 @@ export function EndpointCopyModal({
   if (!isOpen || !endpoint) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl my-8">
+    <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-2xl p-6 shadow-2xl my-8 text-card-foreground">
         <EndpointCopyFormContent
           key={`copy-${endpoint.id}-${activeSessionKey}`}
           endpoint={endpoint}
@@ -114,32 +114,32 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
   return (
     <div className="space-y-5">
       {/* Cabecera */}
-      <div className="flex items-start justify-between pb-3 border-b border-slate-800 gap-3">
+      <div className="flex items-start justify-between pb-3 border-b border-border gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-indigo-400" />
-            <h2 className="text-lg font-bold text-white">Construir y Copiar Petición cURL</h2>
+            <Terminal className="h-4 w-4 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">Construir y Copiar Petición cURL</h2>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Completa los parámetros de ruta y el body validado contra el esquema de{' '}
-            <span className="text-slate-200 font-semibold">{endpoint.name}</span>
+            <span className="text-foreground font-semibold">{endpoint.name}</span>
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <HttpMethodBadge method={endpoint.httpMethod} />
-          <span className="font-mono text-xs text-slate-300 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded">
+          <span className="font-mono text-xs text-foreground bg-muted border border-border px-2 py-0.5 rounded">
             /mock{endpoint.pathPattern.startsWith('/') ? endpoint.pathPattern : `/${endpoint.pathPattern}`}
           </span>
         </div>
       </div>
 
       {/* 1. Cabecera X-Session-ID */}
-      <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
+      <div className="p-3.5 bg-muted/30 border border-border rounded-xl space-y-2">
         <label
           htmlFor={sessionInputId}
-          className="text-xs font-bold text-indigo-400 flex items-center gap-1.5"
+          className="text-xs font-bold text-primary flex items-center gap-1.5"
         >
-          <KeyRound className="h-3.5 w-3.5 text-indigo-400" />
+          <KeyRound className="h-3.5 w-3.5 text-primary" />
           <span>Contexto de Sesión (Header X-Session-ID)</span>
         </label>
         <input
@@ -148,20 +148,20 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
           value={sessionKey}
           onChange={(e) => setSessionKey(e.target.value)}
           placeholder="default"
-          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-primary"
         />
       </div>
 
       {/* 2. Parámetros de Ruta {param} */}
       {pathParams.length > 0 && (
-        <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-3">
+        <div className="p-3.5 bg-muted/30 border border-border rounded-xl space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-400">
-              <Route className="h-3.5 w-3.5 text-indigo-400" />
+            <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+              <Route className="h-3.5 w-3.5 text-primary" />
               <span>Parámetros de Ruta Requeridos</span>
             </div>
-            <span className="text-[11px] font-mono text-slate-400">
-              Ruta resuelta: <strong className="text-indigo-300">/mock{builderResult.resolvedPath}</strong>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              Ruta resuelta: <strong className="text-primary font-medium">/mock{builderResult.resolvedPath}</strong>
             </span>
           </div>
 
@@ -172,10 +172,10 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
                 <div key={param} className="space-y-1">
                   <label
                     htmlFor={`copy-path-${param}`}
-                    className="text-xs font-mono text-slate-300 flex items-center justify-between"
+                    className="text-xs font-mono text-foreground flex items-center justify-between"
                   >
                     <span>{`{${param}}`}</span>
-                    <span className="text-[10px] text-rose-400 font-sans">Obligatorio</span>
+                    <span className="text-[10px] text-destructive font-sans">Obligatorio</span>
                   </label>
                   <input
                     id={`copy-path-${param}`}
@@ -185,14 +185,14 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
                       setPathValues((prev) => ({ ...prev, [param]: e.target.value }))
                     }
                     placeholder={`Valor para ${param}`}
-                    className={`w-full bg-slate-900 border rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none ${
+                    className={`w-full bg-background border rounded-lg px-2.5 py-1.5 text-xs text-foreground font-mono focus:outline-none ${
                       err
-                        ? 'border-rose-600 focus:border-rose-500'
-                        : 'border-slate-800 focus:border-indigo-500'
+                        ? 'border-destructive focus:border-destructive'
+                        : 'border-border focus:border-primary'
                     }`}
                   />
                   {err && (
-                    <p className="text-[11px] text-rose-400 flex items-center gap-1">
+                    <p className="text-[11px] text-destructive flex items-center gap-1">
                       <AlertCircle className="h-3 w-3 shrink-0" />
                       <span>{err}</span>
                     </p>
@@ -206,9 +206,9 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
 
       {/* 3. Constructor asistido del Body según JSON Schema */}
       {schemaRules.length > 0 && (
-        <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+        <div className="p-4 bg-muted/30 border border-border rounded-xl space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span>Campos del Body de la Petición (Validados contra JSON Schema)</span>
           </div>
 
@@ -228,23 +228,23 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
               return (
                 <div
                   key={field.id}
-                  className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg space-y-1.5"
+                  className="p-2.5 bg-card border border-border rounded-lg space-y-1.5"
                 >
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <label
                       htmlFor={`copy-body-${field.name}`}
-                      className="text-xs font-mono font-semibold text-white flex items-center gap-1.5"
+                      className="text-xs font-mono font-semibold text-foreground flex items-center gap-1.5"
                     >
                       <span>{field.name}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-emerald-300 font-normal">
+                      <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
                         {field.type}
                       </span>
                       {field.required ? (
-                        <span className="px-1.5 py-0.5 rounded bg-rose-950/60 border border-rose-800/80 text-[10px] text-rose-300 font-sans font-normal">
+                        <span className="px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-700 dark:text-rose-300 font-sans font-normal">
                           Obligatorio
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-500 font-sans font-normal">
+                        <span className="text-[10px] text-muted-foreground font-sans font-normal">
                           Opcional
                         </span>
                       )}
@@ -255,7 +255,7 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
                         {badges.map((b) => (
                           <span
                             key={b}
-                            className="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-400"
+                            className="px-1.5 py-0.5 rounded bg-background border border-border text-[10px] font-mono text-muted-foreground"
                           >
                             {b}
                           </span>
@@ -272,7 +272,7 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
                       onChange={(e) =>
                         setBodyValues((prev) => ({ ...prev, [field.name]: e.target.value }))
                       }
-                      className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-primary"
                     >
                       {!field.required && <option value="">-- Omitir campo opcional --</option>}
                       {enumOptions.map((opt) => (
@@ -288,7 +288,7 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
                       onChange={(e) =>
                         setBodyValues((prev) => ({ ...prev, [field.name]: e.target.value }))
                       }
-                      className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono focus:outline-none focus:border-primary"
                     >
                       {!field.required && <option value="">-- Omitir campo opcional --</option>}
                       <option value="true">true</option>
@@ -310,16 +310,16 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
                           ? '["item1"]'
                           : `Valor para ${field.name}`
                       }
-                      className={`w-full bg-slate-950 border rounded px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none ${
+                      className={`w-full bg-background border rounded px-2.5 py-1.5 text-xs text-foreground font-mono focus:outline-none ${
                         err
-                          ? 'border-rose-600 focus:border-rose-500'
-                          : 'border-slate-800 focus:border-emerald-500'
+                          ? 'border-destructive focus:border-destructive'
+                          : 'border-border focus:border-primary'
                       }`}
                     />
                   )}
 
                   {err && (
-                    <p className="text-[11px] text-rose-400 flex items-center gap-1">
+                    <p className="text-[11px] text-destructive flex items-center gap-1">
                       <AlertCircle className="h-3 w-3 shrink-0" />
                       <span>{err}</span>
                     </p>
@@ -333,13 +333,13 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
 
       {/* 3b. Body JSON libre opcional solo cuando el método soporta body pero el endpoint no tiene JSON Schema */}
       {supportsCustomBody && (
-        <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
+        <div className="p-3.5 bg-muted/30 border border-border rounded-xl space-y-2">
           <div className="flex items-center justify-between">
-            <label htmlFor={customBodyInputId} className="text-xs font-medium text-slate-300">
+            <label htmlFor={customBodyInputId} className="text-xs font-medium text-foreground">
               Body JSON de la Petición (Opcional — este endpoint no exige esquema de validación)
             </label>
             {builderResult.errors['customBody'] && (
-              <span className="text-xs text-rose-400">{builderResult.errors['customBody']}</span>
+              <span className="text-xs text-destructive">{builderResult.errors['customBody']}</span>
             )}
           </div>
           <textarea
@@ -348,7 +348,7 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
             value={customBodyJson}
             onChange={(e) => setCustomBodyJson(e.target.value)}
             placeholder={'{\n  "ejemplo": "valor"\n}'}
-            className="w-full font-mono text-xs bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="w-full font-mono text-xs bg-background border border-border rounded-lg p-2.5 text-foreground focus:outline-none focus:border-primary"
           />
         </div>
       )}
@@ -356,30 +356,30 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
       {/* 4. Vista previa en vivo del comando cURL */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase text-slate-400">
+          <span className="text-[11px] font-semibold uppercase text-muted-foreground">
             Vista Previa del Comando cURL Generado
           </span>
           {builderResult.isValid ? (
-            <span className="text-[11px] text-emerald-400 font-medium">
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
               ✓ Petición válida según esquema
             </span>
           ) : (
-            <span className="text-[11px] text-rose-400 font-medium">
+            <span className="text-[11px] text-destructive font-medium">
               Corrige los errores señalados para copiar
             </span>
           )}
         </div>
-        <pre className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-cyan-300 font-mono text-xs overflow-x-auto whitespace-pre-wrap break-all">
+        <pre className="p-3 bg-muted/50 border border-border rounded-xl text-primary font-mono text-xs overflow-x-auto whitespace-pre-wrap break-all">
           {builderResult.curlCommand}
         </pre>
       </div>
 
       {/* Acciones */}
-      <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+      <div className="flex justify-end gap-3 pt-3 border-t border-border">
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-lg transition-colors"
+          className="px-4 py-2 bg-secondary hover:bg-muted text-xs text-secondary-foreground rounded-lg transition-colors border border-border/50 cursor-pointer"
         >
           Cerrar
         </button>
@@ -387,7 +387,7 @@ function EndpointCopyFormContent({ endpoint, activeSessionKey, onClose }: Conten
           type="button"
           onClick={handleCopy}
           disabled={!builderResult.isValid}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold text-white rounded-lg transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-xs font-semibold text-primary-foreground rounded-lg transition-colors shadow-sm cursor-pointer"
         >
           {copied ? (
             <>

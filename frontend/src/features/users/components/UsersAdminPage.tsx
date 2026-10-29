@@ -87,21 +87,21 @@ export function UsersAdminPage() {
     switch (role) {
       case 'ROLE_ADMIN':
         return {
-          icon: <Shield className="h-3 w-3 text-purple-400" />,
-          classes: 'bg-purple-950/60 border-purple-800 text-purple-300',
+          icon: <Shield className="h-3 w-3 text-purple-600 dark:text-purple-400" />,
+          classes: 'bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300 dark:bg-purple-950/60 dark:border-purple-800',
           label: 'Administrador',
         };
       case 'ROLE_GUEST':
         return {
-          icon: <Sparkles className="h-3 w-3 text-amber-400" />,
-          classes: 'bg-amber-950/60 border-amber-800 text-amber-300',
+          icon: <Sparkles className="h-3 w-3 text-amber-600 dark:text-amber-400" />,
+          classes: 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300 dark:bg-amber-950/60 dark:border-amber-800',
           label: 'Invitado',
         };
       case 'ROLE_USER':
       default:
         return {
-          icon: <User className="h-3 w-3 text-indigo-400" />,
-          classes: 'bg-indigo-950/60 border-indigo-800 text-indigo-300',
+          icon: <User className="h-3 w-3 text-primary" />,
+          classes: 'bg-primary/10 border-primary/30 text-primary',
           label: 'Usuario',
         };
     }
@@ -112,11 +112,11 @@ export function UsersAdminPage() {
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
-            <Users className="h-6 w-6 text-purple-400" />
+          <h1 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+            <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             Administración de Usuarios
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Control de cuentas, asignación de roles RBAC y gestión de accesos
           </p>
         </div>
@@ -126,8 +126,8 @@ export function UsersAdminPage() {
         <div
           className={`p-3 rounded-xl border flex items-center gap-2 text-xs transition-all ${
             feedback.type === 'success'
-              ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
-              : 'bg-rose-950/60 border-rose-800 text-rose-300'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+              : 'bg-destructive/10 border-destructive/30 text-destructive'
           }`}
         >
           {feedback.type === 'success' ? (
@@ -140,23 +140,23 @@ export function UsersAdminPage() {
       )}
 
       {/* Contenedor principal de la tabla */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-xl space-y-4 text-card-foreground">
         {isLoading ? (
-          <div className="py-12 text-center text-xs text-slate-400">
+          <div className="py-12 text-center text-xs text-muted-foreground">
             Cargando lista de usuarios registrados...
           </div>
         ) : isError ? (
-          <div className="py-8 text-center text-xs text-rose-400">
+          <div className="py-8 text-center text-xs text-destructive">
             {error instanceof Error ? error.message : 'Error al cargar los usuarios'}
           </div>
         ) : users.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-500">
+          <div className="py-8 text-center text-xs text-muted-foreground">
             No hay usuarios registrados en el sistema.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+              <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border">
                 <tr>
                   <th className="py-3 px-3">ID</th>
                   <th className="py-3 px-3">Usuario</th>
@@ -166,18 +166,18 @@ export function UsersAdminPage() {
                   <th className="py-3 px-3 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-300">
+              <tbody className="divide-y divide-border text-foreground">
                 {users.map((u) => {
                   const roleBadge = getRoleBadge(u.role);
                   const isSelf = u.username === currentUser?.username;
                   return (
-                    <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-3 font-mono text-slate-400">#{u.id}</td>
+                    <tr key={u.id} className="hover:bg-muted/40 transition-colors">
+                      <td className="py-3 px-3 font-mono text-muted-foreground">#{u.id}</td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white">{u.username}</span>
+                          <span className="font-semibold text-foreground">{u.username}</span>
                           {isSelf && (
-                            <span className="text-[10px] bg-slate-800 border border-slate-700 text-indigo-300 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] bg-muted border border-border text-primary px-1.5 py-0.5 rounded font-mono">
                               Tú
                             </span>
                           )}
@@ -201,16 +201,16 @@ export function UsersAdminPage() {
                           value={u.role}
                           onChange={(e) => handleRoleChange(u, e.target.value as UserRole)}
                           disabled={roleMutation.isPending}
-                          className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-purple-500 font-medium"
+                          className="bg-background border border-border text-foreground text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-primary font-medium cursor-pointer"
                         >
                           <option value="ROLE_USER">ROLE_USER (Estándar)</option>
                           <option value="ROLE_ADMIN">ROLE_ADMIN (Administrador)</option>
                           <option value="ROLE_GUEST">ROLE_GUEST (Invitado)</option>
                         </select>
                       </td>
-                      <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">
+                      <td className="py-3 px-3 text-muted-foreground font-mono text-[11px]">
                         <div className="flex items-center gap-1.5">
-                          <Calendar className="h-3 w-3 text-slate-500" />
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
                           {u.createdAt ? new Date(u.createdAt).toLocaleString() : 'N/A'}
                         </div>
                       </td>
@@ -218,10 +218,10 @@ export function UsersAdminPage() {
                         <button
                           onClick={() => handleDelete(u)}
                           disabled={isSelf || deleteMutation.isPending}
-                          className={`p-1.5 rounded-lg border transition-colors inline-flex items-center gap-1 text-xs ${
+                          className={`p-1.5 rounded-lg border transition-colors inline-flex items-center gap-1 text-xs cursor-pointer ${
                             isSelf
-                              ? 'bg-slate-800/40 border-slate-800 text-slate-600 cursor-not-allowed'
-                              : 'bg-rose-950/40 hover:bg-rose-900/60 border-rose-900 text-rose-300'
+                              ? 'bg-muted/40 border-border text-muted-foreground/40 cursor-not-allowed'
+                              : 'bg-destructive/10 hover:bg-destructive/20 border-destructive/30 text-destructive'
                           }`}
                           title={isSelf ? 'No puedes eliminarte a ti mismo' : 'Eliminar usuario'}
                         >

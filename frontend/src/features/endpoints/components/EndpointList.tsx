@@ -40,18 +40,18 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+    <div className="bg-card border border-border rounded-2xl p-6 shadow-xl space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-white">Mock Studio — Endpoints Registrados</h2>
-          <p className="text-xs text-slate-400">
-            Rutas activas servidas bajo <code className="text-indigo-400 font-mono">/mock/**</code> con el contexto de sesión actual (<code className="text-indigo-300 font-mono">{activeSessionKey}</code>)
+          <h2 className="text-lg font-bold text-foreground">Mock Studio — Endpoints Registrados</h2>
+          <p className="text-xs text-muted-foreground">
+            Rutas activas servidas bajo <code className="text-primary font-mono">/mock/**</code> con el contexto de sesión actual (<code className="text-primary font-mono font-medium">{activeSessionKey}</code>)
           </p>
         </div>
 
         <button
           onClick={handleCreateNew}
-          className="flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white rounded-lg transition-colors shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-2 px-3.5 py-2 bg-primary hover:bg-primary/90 text-xs font-medium text-primary-foreground rounded-lg transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           Nuevo Endpoint
@@ -59,15 +59,15 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-xs text-slate-400">Cargando endpoints...</div>
+        <div className="py-8 text-center text-xs text-muted-foreground">Cargando endpoints...</div>
       ) : endpoints.length === 0 ? (
-        <div className="py-8 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+        <div className="py-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
           No hay endpoints registrados todavía. Crea el primero pulsando «Nuevo Endpoint».
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+            <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border">
               <tr>
                 <th className="py-2.5 px-3">Nombre</th>
                 <th className="py-2.5 px-3">Método</th>
@@ -78,7 +78,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                 <th className="py-2.5 px-3 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 text-slate-300">
+            <tbody className="divide-y divide-border text-foreground">
               {endpoints.map((ep) => {
                 const hasDelay = typeof ep.delayMs === 'number' && ep.delayMs > 0;
                 const hasErrorRate = typeof ep.errorRate === 'number' && ep.errorRate > 0;
@@ -88,18 +88,18 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                   ep.stateUpdates.trim() !== '{}';
 
                 return (
-                  <tr key={ep.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2.5 px-3 font-medium text-white">{ep.name}</td>
+                  <tr key={ep.id} className="hover:bg-muted/40 transition-colors">
+                    <td className="py-2.5 px-3 font-medium text-foreground">{ep.name}</td>
                     <td className="py-2.5 px-3">
                       <HttpMethodBadge method={ep.httpMethod} />
                     </td>
-                    <td className="py-2.5 px-3 font-mono text-slate-200">{ep.pathPattern}</td>
-                    <td className="py-2.5 px-3 font-mono text-emerald-400">{ep.statusCode}</td>
+                    <td className="py-2.5 px-3 font-mono text-foreground">{ep.pathPattern}</td>
+                    <td className="py-2.5 px-3 font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{ep.statusCode}</td>
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {hasStateUpdates && (
                           <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950/60 border border-cyan-800 text-cyan-300"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 dark:bg-cyan-950/60 dark:border-cyan-800"
                             title="Aplica mutaciones de estado automáticas en sesión"
                           >
                             <Database className="h-2.5 w-2.5" />
@@ -108,7 +108,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                         )}
                         {hasDelay && (
                           <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-950/60 border border-indigo-800 text-indigo-300"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-500/10 border border-indigo-500/30 text-indigo-700 dark:text-indigo-300 dark:bg-indigo-950/60 dark:border-indigo-800"
                             title={`Latencia: ${ep.delayMs}ms`}
                           >
                             <Clock className="h-2.5 w-2.5" />
@@ -117,7 +117,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                         )}
                         {hasErrorRate && (
                           <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-950/60 border border-rose-800 text-rose-300"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 dark:bg-rose-950/60 dark:border-rose-800"
                             title={`Tasa de error: ${Math.round(ep.errorRate! * 100)}% (${ep.failureStatusCode ?? 500})`}
                           >
                             <AlertTriangle className="h-2.5 w-2.5" />
@@ -125,16 +125,16 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                           </span>
                         )}
                         {!hasDelay && !hasErrorRate && !hasStateUpdates && (
-                          <span className="text-[11px] text-slate-500">—</span>
+                          <span className="text-[11px] text-muted-foreground">—</span>
                         )}
                       </div>
                     </td>
                     <td className="py-2.5 px-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                           ep.active
-                            ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 dark:border-emerald-800 dark:bg-emerald-950/60'
+                            : 'bg-muted text-muted-foreground border-border'
                         }`}
                       >
                         {ep.active ? 'Activo' : 'Inactivo'}
@@ -144,7 +144,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleOpenCopyModal(ep)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition-colors"
+                          className="p-1.5 bg-secondary hover:bg-muted text-secondary-foreground rounded-md transition-colors border border-border/50 cursor-pointer"
                           title="Construir y copiar comando cURL con parámetros y body válidos"
                         >
                           <Copy className="h-3.5 w-3.5" />
@@ -152,7 +152,7 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
 
                         <button
                           onClick={() => handleEdit(ep)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition-colors"
+                          className="p-1.5 bg-secondary hover:bg-muted text-secondary-foreground rounded-md transition-colors border border-border/50 cursor-pointer"
                           title="Editar endpoint y controles de caos"
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -160,19 +160,19 @@ export function EndpointList({ activeSessionKey = 'default' }: EndpointListProps
 
                         <button
                           onClick={() => toggleEndpoint(ep.id)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition-colors"
+                          className="p-1.5 bg-secondary hover:bg-muted text-secondary-foreground rounded-md transition-colors border border-border/50 cursor-pointer"
                           title={ep.active ? 'Desactivar' : 'Activar'}
                         >
                           <Power
                             className={`h-3.5 w-3.5 ${
-                              ep.active ? 'text-emerald-400' : 'text-slate-500'
+                              ep.active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
                             }`}
                           />
                         </button>
 
                         <button
                           onClick={() => deleteEndpoint(ep.id)}
-                          className="p-1.5 bg-slate-800 hover:bg-rose-950 text-rose-400 rounded-md transition-colors"
+                          className="p-1.5 bg-secondary hover:bg-destructive/15 text-destructive rounded-md transition-colors border border-border/50 cursor-pointer"
                           title="Eliminar endpoint"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

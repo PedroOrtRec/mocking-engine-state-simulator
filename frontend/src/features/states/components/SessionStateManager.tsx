@@ -220,18 +220,18 @@ export function SessionStateManager({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+    <div className="bg-card border border-border rounded-2xl p-6 shadow-xl space-y-6 text-card-foreground">
       {/* Encabezado y Selector de Sesiones */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-950/60 border border-indigo-800 text-indigo-400">
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/30 text-primary">
             <Database className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+            <h2 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
               Gestor de Sesiones & Estado Aislado
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Escenarios de pruebas 1:N aislados por usuario y persistidos en base de datos
             </p>
           </div>
@@ -247,7 +247,7 @@ export function SessionStateManager({
               value={activeState?.sessionKey ?? selectedSessionKey}
               onChange={(e) => onSelectSessionKey(e.target.value)}
               disabled={isLoading || states.length === 0}
-              className="bg-slate-950 border border-slate-800 text-white text-xs rounded-lg px-3 py-2 pr-8 focus:outline-none focus:border-indigo-500 font-mono"
+              className="bg-background border border-border text-foreground text-xs rounded-lg px-3 py-2 pr-8 focus:outline-none focus:border-primary font-mono cursor-pointer"
             >
               {states.map((s) => (
                 <option key={s.id} value={s.sessionKey}>
@@ -259,7 +259,7 @@ export function SessionStateManager({
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white rounded-lg transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-xs font-medium text-primary-foreground rounded-lg transition-colors whitespace-nowrap cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             Nueva Sesión
@@ -268,23 +268,23 @@ export function SessionStateManager({
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-xs text-slate-400">Cargando sesiones de escenario...</div>
+        <div className="py-8 text-center text-xs text-muted-foreground">Cargando sesiones de escenario...</div>
       ) : !activeState ? (
-        <div className="py-6 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+        <div className="py-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
           No se encontró ninguna sesión activa. Crea una nueva sesión para comenzar.
         </div>
       ) : (
         /* Card con el Estado de la Sesión Seleccionada */
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-950/70 border border-slate-800/80 rounded-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/30 border border-border rounded-xl">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-200">{activeState.name}</span>
+                <span className="text-xs font-semibold text-foreground">{activeState.name}</span>
                 <span
                   className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                     activeState.system
-                      ? 'bg-amber-950/60 border-amber-800 text-amber-300'
-                      : 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300 dark:bg-amber-950/60 dark:border-amber-800'
+                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800'
                   }`}
                 >
                   {activeState.system ? (
@@ -298,17 +298,17 @@ export function SessionStateManager({
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-400 font-mono">X-Session-ID:</span>
-                <code className="text-indigo-400 font-mono font-medium px-1.5 py-0.5 bg-indigo-950/40 rounded border border-indigo-900/40">
+                <span className="text-muted-foreground font-mono">X-Session-ID:</span>
+                <code className="text-primary font-mono font-medium px-1.5 py-0.5 bg-primary/10 rounded border border-primary/20">
                   {activeState.sessionKey}
                 </code>
                 <button
                   onClick={() => handleCopyKey(activeState.sessionKey)}
-                  className="p-1 hover:text-white text-slate-400 transition-colors"
+                  className="p-1 hover:text-foreground text-muted-foreground transition-colors cursor-pointer"
                   title="Copiar Session Key"
                 >
                   {copiedKey ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   ) : (
                     <Copy className="h-3.5 w-3.5" />
                   )}
@@ -321,7 +321,7 @@ export function SessionStateManager({
                 <button
                   onClick={handleDeleteSession}
                   disabled={isDeleting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800 text-xs text-rose-300 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 text-xs text-destructive rounded-lg transition-colors cursor-pointer"
                   title="Eliminar esta sesión personalizada"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -329,7 +329,7 @@ export function SessionStateManager({
                 </button>
               )}
               {activeState.system && (
-                <span className="text-[11px] text-slate-500 italic">
+                <span className="text-[11px] text-muted-foreground italic">
                   Sesión base del sistema protegida
                 </span>
               )}
@@ -340,8 +340,8 @@ export function SessionStateManager({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileCode2 className="h-4 w-4 text-emerald-400" />
-                <label htmlFor="state-json-editor" className="text-xs font-medium text-slate-300">
+                <FileCode2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <label htmlFor="state-json-editor" className="text-xs font-medium text-foreground">
                   Variables de Estado (JSON)
                 </label>
               </div>
@@ -350,7 +350,7 @@ export function SessionStateManager({
                 <button
                   type="button"
                   onClick={handleFormatJson}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 rounded border border-slate-700 transition-colors"
+                  className="px-2.5 py-1 bg-secondary hover:bg-muted text-[11px] text-secondary-foreground rounded border border-border transition-colors cursor-pointer"
                 >
                   Formatear JSON
                 </button>
@@ -358,10 +358,10 @@ export function SessionStateManager({
                   type="button"
                   onClick={handleResetJson}
                   disabled={isUpdating || isResetting}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 rounded border border-slate-700 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 bg-secondary hover:bg-muted text-[11px] text-secondary-foreground rounded border border-border transition-colors cursor-pointer"
                   title="Restaurar el estado a sus valores originales guardados"
                 >
-                  <RotateCcw className="h-3 w-3 text-slate-400" />
+                  <RotateCcw className="h-3 w-3 text-muted-foreground" />
                   Restaurar original
                 </button>
               </div>
@@ -373,31 +373,31 @@ export function SessionStateManager({
               value={currentJsonValue}
               onChange={(e) => handleJsonChange(e.target.value)}
               disabled={activeState.system}
-              className={`w-full font-mono text-xs bg-slate-950 border rounded-xl p-3 text-emerald-400 focus:outline-none transition-colors ${
+              className={`w-full font-mono text-xs bg-background border rounded-xl p-3 text-emerald-600 dark:text-emerald-400 focus:outline-none transition-colors ${
                 jsonValidationError
-                  ? 'border-rose-500/80 focus:border-rose-500'
-                  : 'border-slate-800 focus:border-indigo-500'
+                  ? 'border-destructive focus:border-destructive'
+                  : 'border-border focus:border-primary'
               } ${activeState.system ? 'opacity-80 cursor-not-allowed' : ''}`}
               placeholder="{}"
             />
 
             {jsonValidationError && (
-              <div className="flex items-center gap-1.5 text-xs text-rose-400">
+              <div className="flex items-center gap-1.5 text-xs text-destructive">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 <span>{jsonValidationError}</span>
               </div>
             )}
 
             {saveSuccessMessage && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
                 <Check className="h-3.5 w-3.5 shrink-0" />
                 <span>{saveSuccessMessage}</span>
               </div>
             )}
 
             {activeState.system ? (
-              <div className="flex items-center gap-2 p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-xs text-slate-400">
-                <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0" />
+              <div className="flex items-center gap-2 p-2.5 bg-muted/40 border border-border rounded-lg text-xs text-muted-foreground">
+                <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
                 <span>
                   El estado por defecto del sistema es de solo lectura. Para guardar variables de estado
                   personalizadas, crea una sesión personalizada con el botón «Nueva Sesión».
@@ -408,7 +408,7 @@ export function SessionStateManager({
                 <button
                   onClick={handleSaveJson}
                   disabled={isUpdating || !!jsonValidationError}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold text-white rounded-lg transition-colors shadow-sm"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-xs font-semibold text-primary-foreground rounded-lg transition-colors shadow-sm cursor-pointer"
                 >
                   <Save className="h-3.5 w-3.5" />
                   {isUpdating ? 'Guardando...' : 'Guardar Estado'}
@@ -421,23 +421,23 @@ export function SessionStateManager({
 
       {/* Modal de creación de nueva sesión */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white">Crear Nueva Sesión de Escenario</h3>
-            <p className="text-xs text-slate-400">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 text-card-foreground">
+            <h3 className="text-base font-bold text-foreground">Crear Nueva Sesión de Escenario</h3>
+            <p className="text-xs text-muted-foreground">
               Cada sesión tiene su propio almacén de estado aislado accesible vía el encabezado{' '}
-              <code className="text-indigo-400 font-mono">X-Session-ID</code>.
+              <code className="text-primary font-mono">X-Session-ID</code>.
             </p>
 
             {newSessionError && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-200 text-xs rounded-lg">
+              <div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded-lg">
                 {newSessionError}
               </div>
             )}
 
             <form onSubmit={handleCreateSession} className="space-y-4">
               <div>
-                <label htmlFor={newSessionNameId} className="text-xs font-medium text-slate-300">
+                <label htmlFor={newSessionNameId} className="text-xs font-medium text-foreground">
                   Nombre de la Sesión
                 </label>
                 <input
@@ -446,16 +446,16 @@ export function SessionStateManager({
                   value={newSessionName}
                   onChange={(e) => setNewSessionName(e.target.value)}
                   placeholder="ej. checkout_flow o test_user_01"
-                  className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                  className="w-full mt-1 bg-background border border-border rounded-lg p-2 text-xs text-foreground focus:outline-none focus:border-primary font-mono placeholder:text-muted-foreground"
                   required
                 />
-                <span className="text-[11px] text-slate-500 mt-0.5 block">
+                <span className="text-[11px] text-muted-foreground mt-0.5 block">
                   Solo letras, números, guiones (-) y guiones bajos (_). Mín. 2 caracteres.
                 </span>
               </div>
 
               <div>
-                <label htmlFor={newSessionJsonId} className="text-xs font-medium text-slate-300">
+                <label htmlFor={newSessionJsonId} className="text-xs font-medium text-foreground">
                   Estado Inicial (JSON)
                 </label>
                 <textarea
@@ -463,7 +463,7 @@ export function SessionStateManager({
                   rows={5}
                   value={newSessionJson}
                   onChange={(e) => setNewSessionJson(e.target.value)}
-                  className="w-full mt-1 font-mono text-xs bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-emerald-400 focus:outline-none focus:border-indigo-500"
+                  className="w-full mt-1 font-mono text-xs bg-background border border-border rounded-lg p-2.5 text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-primary"
                 />
               </div>
 
@@ -474,14 +474,14 @@ export function SessionStateManager({
                     setIsCreateModalOpen(false);
                     setNewSessionError(null);
                   }}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-lg transition-colors"
+                  className="px-3.5 py-2 bg-secondary hover:bg-muted text-xs text-secondary-foreground rounded-lg transition-colors border border-border cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-xs font-semibold text-white rounded-lg transition-colors"
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-xs font-semibold text-primary-foreground rounded-lg transition-colors cursor-pointer"
                 >
                   {isCreating ? 'Creando...' : 'Crear Sesión'}
                 </button>

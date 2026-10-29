@@ -50,49 +50,49 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 text-foreground transition-colors duration-200">
+      <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 shadow-2xl space-y-6 text-card-foreground">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Mocking Engine Studio</h1>
-          <p className="text-sm text-slate-400">Simulador dinámico de APIs y control de estados</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Mocking Engine Studio</h1>
+          <p className="text-sm text-muted-foreground">Simulador dinámico de APIs y control de estados</p>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-950/60 border border-red-800 text-red-200 text-sm rounded-lg">
+          <div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="username" className="text-xs font-medium text-slate-300">
+            <label htmlFor="username" className="text-xs font-medium text-foreground">
               Usuario
             </label>
             <div className="relative mt-1">
-              <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm focus:outline-none focus:border-indigo-500 text-white"
+                className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="password" className="text-xs font-medium text-slate-300">
+            <label htmlFor="password" className="text-xs font-medium text-foreground">
               Contraseña
             </label>
             <div className="relative mt-1">
-              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm focus:outline-none focus:border-indigo-500 text-white"
+                className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                 required
               />
             </div>
@@ -101,7 +101,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
             {isLoading
               ? 'Procesando...'
@@ -119,7 +119,7 @@ export function LoginPage() {
               setIsRegisterMode((prev) => !prev);
               setError(null);
             }}
-            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="text-xs text-primary hover:underline transition-colors cursor-pointer"
           >
             {isRegisterMode
               ? '¿Ya tienes cuenta? Inicia sesión'
@@ -129,10 +129,10 @@ export function LoginPage() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-800" />
+            <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-900 px-2 text-slate-500">¿Solo quieres probar?</span>
+            <span className="bg-card px-2 text-muted-foreground">¿Solo quieres probar?</span>
           </div>
         </div>
 
@@ -140,9 +140,9 @@ export function LoginPage() {
         <button
           onClick={handleGuestAccess}
           disabled={isLoading}
-          className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full py-2.5 px-4 bg-secondary hover:bg-muted border border-border text-foreground font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
-          <Sparkles className="h-4 w-4 text-amber-400" />
+          <Sparkles className="h-4 w-4 text-amber-500" />
           Entrar como Invitado (Sandbox 24h)
         </button>
       </div>

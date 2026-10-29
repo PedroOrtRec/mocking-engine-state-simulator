@@ -45,10 +45,10 @@ export function AppLayout() {
               <span
                 className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold flex items-center gap-1 ${
                   user.role === 'ROLE_GUEST'
-                    ? 'bg-amber-950/60 border-amber-800 text-amber-300'
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300 dark:bg-amber-950/60 dark:border-amber-800'
                     : user.role === 'ROLE_ADMIN'
-                    ? 'bg-purple-950/60 border-purple-800 text-purple-300'
-                    : 'bg-indigo-950/60 border-indigo-800 text-indigo-300'
+                    ? 'bg-purple-500/15 border-purple-500/30 text-purple-700 dark:text-purple-300 dark:bg-purple-950/60 dark:border-purple-800'
+                    : 'bg-primary/10 border-primary/30 text-primary'
                 }`}
               >
                 {user.role === 'ROLE_GUEST' ? (
