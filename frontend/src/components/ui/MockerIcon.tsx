@@ -12,10 +12,14 @@ export function MockerIcon({
   ...props
 }: MockerIconProps) {
   const id = useId();
-  const glowId = `neon-glow-${id}`;
-  const cyberGradId = `cyber-gradient-${id}`;
-  const neonAccentId = `neon-accent-${id}`;
-  const dbFillId = `db-fill-${id}`;
+
+  // IDs con scope único para evitar colisiones en el DOM
+  const glowId = `glow-${id}`;
+  const mGradId = `m-grad-${id}`;
+  const rectBackGradId = `rect-back-grad-${id}`;
+  const rectFrontGradId = `rect-front-grad-${id}`;
+  const rectBackFillId = `rect-back-fill-${id}`;
+  const rectFrontFillId = `rect-front-fill-${id}`;
 
   return (
     <svg
@@ -30,128 +34,114 @@ export function MockerIcon({
     >
       <title>{title}</title>
       <defs>
-        {/* Filtro de resplandor neón */}
+        {/* Filtro de resplandor neón difuso */}
         <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feGaussianBlur stdDeviation="6" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
 
-        {/* Gradiente ciberpunk para la base de datos (cian -> azul -> púrpura) */}
-        <linearGradient id={cyberGradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00f2fe" />
-          <stop offset="50%" stopColor="#4facfe" />
-          <stop offset="100%" stopColor="#7f00ff" />
-        </linearGradient>
-
-        {/* Gradiente neón acentuado (violeta -> cian -> verde neón) */}
-        <linearGradient id={neonAccentId} x1="0%" y1="100%" x2="100%" y2="0%">
+        {/* Gradiente principal de la M transversal (Violeta -> Cian eléctrico -> Menta neón) */}
+        <linearGradient id={mGradId} x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#7000ff" />
-          <stop offset="60%" stopColor="#00d2ff" />
+          <stop offset="50%" stopColor="#00d2ff" />
           <stop offset="100%" stopColor="#00ffa3" />
         </linearGradient>
 
-        {/* Gradiente vertical translúcido para el volumen de datos */}
-        <linearGradient id={dbFillId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#7f00ff" stopOpacity="0.1" />
+        {/* Gradiente del contorno del rectángulo posterior (Cian profundo a azul) */}
+        <linearGradient id={rectBackGradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#4facfe" stopOpacity="0.4" />
+        </linearGradient>
+
+        {/* Gradiente del contorno del rectángulo frontal (Azul a púrpura) */}
+        <linearGradient id={rectFrontGradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4facfe" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#7f00ff" stopOpacity="0.6" />
+        </linearGradient>
+
+        {/* Relleno translúcido para el plano posterior */}
+        <linearGradient id={rectBackFillId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#4facfe" stopOpacity="0.02" />
+        </linearGradient>
+
+        {/* Relleno translúcido para el plano frontal */}
+        <linearGradient id={rectFrontFillId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#4facfe" stopOpacity="0.14" />
+          <stop offset="100%" stopColor="#7f00ff" stopOpacity="0.04" />
         </linearGradient>
       </defs>
 
-      {/* Fondo delimitador */}
+      {/* Fondo base delimitador */}
       <rect width="100%" height="100%" fill="transparent" rx="30" />
 
       <g filter={`url(#${glowId})`}>
-        {/* Base de datos (estado / mocks) alineada sobre el borde izquierdo en x = 60.663 */}
-        <g
-          stroke={`url(#${cyberGradId})`}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill={`url(#${neonAccentId})`}
-        >
-          <path 
-            d="
-            M 60.663,230 
-            C 60.663,248 95.663,260 130.663,260 
-            C 165.663,260 200.663,248 200.663,230 
-            L 200.663,255 
-            C 200.663,273 165.663,285 130.663,285 
-            C 95.663,285 60.663,273 60.663,255 Z" />
-          <path 
-            d="
-            M 60.663,185 
-            C 60.663,203 95.663,215 130.663,215 
-            C 165.663,215 200.663,203 200.663,185 
-            L 200.663,210 
-            C 200.663,228 165.663,240 130.663,240 
-            C 95.663,240 60.663,228 60.663,210 Z" />
-          <ellipse cx="130.663" cy="155" rx="70" ry="25" />
-        </g>
-
-        {/* Terminal / conector API invertido (parte estrecha en el cable x=275.663, parte ancha a la izquierda) */}
-        <g
-          stroke={`url(#${neonAccentId})`}
-          strokeWidth="12"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="#0b1730"
-        >
-          {/* Silueta del conector: cuello estrecho a la derecha (cable) -> cuerpo ancho a la izquierda */}
-          <path
-            d="
-              M 275.663, 45.47
-              L 275.663, 34
-              C 275.663, 32.47 270, 32.47 265, 32.47
-              L 245, 32.47
-              C 240, 32.47 238, 25 238, 20
-              L 238, 17.47
-              C 238, 17.47 234, 17.47 228, 17.47
-              L 203, 17.47
-              C 197, 17.47 195, 21.47 195, 27.47
-              L 195, 63.47
-              C 195, 69.47 197, 73.47 203, 73.47
-              L 228, 73.47
-              C 234, 73.47 238, 73.47 238, 68.94
-              L 238, 65
-              C 238, 59 240, 58.47 245, 58.47
-              L 265, 58.47
-              C 270, 58.47 275.663, 58.47 275.663, 56.94
-              Z
-            "
-          />
-
-          {/* Clavijas metálicas frontales (emergen de la parte ancha hacia la izquierda) */}
-          <path d="M 195, 33 L 165, 33" fill="none" strokeWidth="8" />
-          <path d="M 195, 58 L 165, 58" fill="none" strokeWidth="8" />
-        </g>
-
         {/* 
-          Trazo continuo (Cuadrado con bordes redondeados + M):
-          1. Nace de la base de datos en x = 60.663, y = 259.47.
-          2. Recorre el marco inferior con la M integrada.
-          3. Sube por la derecha, redondea la esquina superior derecha y se conecta a la base del terminal en (275.663, 45.47).
+          1. Rectángulo Posterior en Perspectiva (Plano de Estado / Mock State)
+          Inclinación isométrica oblicua con esquinas suavizadas
         */}
         <path
           d="
-          M 60.663 259.47
-          L 60.663 309.47 
-          C 60.663 334.47 80.663 354.47 105.663 354.47 
-          L 250.861 354.449 
-          C 247.861 354.449 232.872 308.866 247.872 288.866 
-          C 259.872 273.866 293.223 295.047 305.223 320.047 
-          C 317.223 295.047 354.127 281.143 366.127 296.143 
-          C 381.127 316.143 355.866 354.408 355.866 354.408 
-          C 390.663 354.47 410.663 334.47 410.663 309.47 
-          L 410.663 90.47
-          C 410.663 65.47 390.663 45.47 365.663 45.47
-          L 275.663 45.47 
+            M 160, 108
+            L 300, 82
+            C 308, 80.5 314, 85 312, 93
+            L 292, 271
+            C 291, 277 285, 281 278, 282
+            L 138, 308
+            C 130, 309.5 124, 305 126, 297
+            L 146, 119
+            C 147, 113 153, 109 160, 108
+            Z
+          "
+          fill={`url(#${rectBackFillId})`}
+          stroke={`url(#${rectBackGradId})`}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* 
+          2. Rectángulo Frontal Superpuesto en Perspectiva (Plano de Simulación / Engine)
+          Desplazado en profundidad hacia abajo a la derecha
+        */}
+        <path
+          d="
+            M 220, 168
+            L 360, 142
+            C 368, 140.5 374, 145 372, 153
+            L 352, 331
+            C 351, 337 345, 341 338, 342
+            L 198, 368
+            C 190, 369.5 184, 365 186, 357
+            L 206, 179
+            C 207, 173 213, 169 220, 168
+            Z
+          "
+          fill={`url(#${rectFrontFillId})`}
+          stroke={`url(#${rectFrontGradId})`}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* 
+          3. 'M' Mayúscula Transversal (Trazo de Fuerza / Mocking Engine)
+          Atraviesa ambos planos de izquierda a derecha con alta energía y presencia
+        */}
+        <path
+          d="
+            M 115, 345
+            L 195, 145
+            L 255, 275
+            L 315, 135
+            L 395, 335
           "
           fill="none"
-          stroke={`url(#${neonAccentId})`}
-          strokeWidth="14"
+          stroke={`url(#${mGradId})`}
+          strokeWidth="16"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
