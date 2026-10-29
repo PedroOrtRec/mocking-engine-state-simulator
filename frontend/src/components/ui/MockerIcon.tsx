@@ -92,12 +92,12 @@ export function MockerIcon({
         </g>
 
         {/* 
-          Trazo continuo conceptual (Cuadrado con bordes redondeados + M robusta):
+          Trazo continuo conceptual (Cuadrado con bordes redondeados + M desplazada a la derecha):
           1. Empieza en la esquina superior derecha (380, 75) y avanza a la izquierda.
           2. Redondea la esquina superior izquierda y baja por el lateral izquierdo.
-          3. Redondea la esquina inferior izquierda y avanza por el borde inferior.
-          4. Se desvía hacia arriba formando la 'M' robusta (picos en 195 y 305, valle en 250).
-          5. Vuelve al borde inferior (350, 425) y continúa hacia la esquina inferior derecha.
+          3. Redondea la esquina inferior izquierda y recorre el borde inferior hasta 200.
+          4. Se desvía hacia arriba formando la 'M' (picos más bajos en 245, valle en 335, centrada en 280).
+          5. Vuelve al borde inferior (360, 425) y continúa hacia la esquina inferior derecha.
           6. Redondea la esquina inferior derecha y sube por el lateral derecho hasta medio camino (425, 240).
         */}
         <path
@@ -107,11 +107,11 @@ export function MockerIcon({
             C 95,75 75,95 75,120
             L 75,380
             C 75,405 95,425 120,425
-            L 150,425
-            C 165,425 175,230 195,195
-            C 210,175 235,280 250,305
-            C 265,280 290,175 305,195
-            C 325,230 335,425 350,425
+            L 200,425
+            C 210,425 225,265 240,245
+            C 252,230 268,310 280,335
+            C 292,310 308,230 320,245
+            C 335,265 350,425 360,425
             L 380,425
             C 405,425 425,405 425,380
             L 425,240
