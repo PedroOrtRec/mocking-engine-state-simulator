@@ -70,14 +70,28 @@ export function MockerIcon({
           strokeWidth="4"
           strokeLinecap="round"
           strokeLinejoin="round"
-          fill={`url(#${dbFillId})`}
+          fill={`url(#${neonAccentId})`}
         >
-          <path d="M 60.663,230 C 60.663,248 95.663,260 130.663,260 C 165.663,260 200.663,248 200.663,230 L 200.663,255 C 200.663,273 165.663,285 130.663,285 C 95.663,285 60.663,273 60.663,255 Z" />
-          <path d="M 60.663,185 C 60.663,203 95.663,215 130.663,215 C 165.663,215 200.663,203 200.663,185 L 200.663,210 C 200.663,228 165.663,240 130.663,240 C 95.663,240 60.663,228 60.663,210 Z" />
+          <path 
+            d="
+            M 60.663,230 
+            C 60.663,248 95.663,260 130.663,260 
+            C 165.663,260 200.663,248 200.663,230 
+            L 200.663,255 
+            C 200.663,273 165.663,285 130.663,285 
+            C 95.663,285 60.663,273 60.663,255 Z" />
+          <path 
+            d="
+            M 60.663,185 
+            C 60.663,203 95.663,215 130.663,215 
+            C 165.663,215 200.663,203 200.663,185 
+            L 200.663,210 
+            C 200.663,228 165.663,240 130.663,240 
+            C 95.663,240 60.663,228 60.663,210 Z" />
           <ellipse cx="130.663" cy="155" rx="70" ry="25" />
         </g>
 
-        {/* Terminal / conector API */}
+        {/* Terminal / conector API horizontal (clavijas a la izquierda, base en 275.663, 45.47) */}
         <g
           stroke={`url(#${neonAccentId})`}
           strokeWidth="4"
@@ -85,34 +99,36 @@ export function MockerIcon({
           strokeLinejoin="round"
           fill="none"
         >
-          <line x1="335" y1="135" x2="335" y2="155" strokeWidth="7" />
-          <line x1="365" y1="135" x2="365" y2="155" strokeWidth="7" />
-          <rect x="320" y="155" width="60" height="12" rx="10" fill="#0b1730" />
-          <path d="M 335,197 L 335,212 C 335,220 340,225 350,225 C 360,225 365,220 365,212 L 365,197" fill="#0b1730" />
+          <line x1="235.663" y1="30.47" x2="215.663" y2="30.47" strokeWidth="7" />
+          <line x1="235.663" y1="60.47" x2="215.663" y2="60.47" strokeWidth="7" />
+          <rect x="235.663" y="15.47" width="12" height="60" rx="6" fill="#0b1730" />
+          <path
+            d="M 247.663,30.47 L 262.663,30.47 C 270.663,30.47 275.663,35.47 275.663,45.47 C 275.663,55.47 270.663,60.47 262.663,60.47 L 247.663,60.47"
+            fill="#0b1730"
+          />
         </g>
 
         {/* 
-          Trazo continuo conceptual (Cuadrado con bordes redondeados + M desplazada a la derecha):
-          1. Empieza en la esquina superior derecha (380, 75) y avanza a la izquierda.
-          2. Redondea la esquina superior izquierda y baja por el lateral izquierdo.
-          3. Redondea la esquina inferior izquierda y recorre el borde inferior hasta 200.
-          4. Se desvía hacia arriba formando la 'M' (picos más bajos en 245, valle en 335, centrada en 280).
-          5. Vuelve al borde inferior (360, 425) y continúa hacia la esquina inferior derecha.
-          6. Redondea la esquina inferior derecha y sube por el lateral derecho hasta medio camino (425, 240).
+          Trazo continuo (Cuadrado con bordes redondeados + M):
+          1. Nace de la base de datos en x = 60.663, y = 259.47.
+          2. Recorre el marco inferior con la M integrada.
+          3. Sube por la derecha, redondea la esquina superior derecha y se conecta a la base del terminal en (275.663, 45.47).
         */}
         <path
           d="
           M 60.663 259.47
           L 60.663 309.47 
           C 60.663 334.47 80.663 354.47 105.663 354.47 
-          L 237.861 354.449 
+          L 250.861 354.449 
           C 247.861 354.449 232.872 308.866 247.872 288.866 
           C 259.872 273.866 293.223 295.047 305.223 320.047 
           C 317.223 295.047 354.127 281.143 366.127 296.143 
-          C 381.127 316.143 355.866 354.408 365.866 354.408 
-          L 365.663 354.47 
+          C 381.127 316.143 355.866 354.408 355.866 354.408 
           C 390.663 354.47 410.663 334.47 410.663 309.47 
-          L 410.663 169.47"
+          L 410.663 90.47
+          C 410.663 65.47 390.663 45.47 365.663 45.47
+          L 275.663 45.47 
+          "
           fill="none"
           stroke={`url(#${neonAccentId})`}
           strokeWidth="14"
