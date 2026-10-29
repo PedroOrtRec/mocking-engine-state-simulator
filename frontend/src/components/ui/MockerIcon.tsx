@@ -93,15 +93,15 @@ export function MockerIcon({
 
         {/* 
           Trazo continuo principal:
-          1. Arco circular envolvente de 270° (Sur -> Este -> Norte -> Oeste).
-          2. Transición tangente en el cuadrante inferior izquierdo hacia la M.
-          3. Circuito dinámico de la M conectando con el terminal de salida.
+          1. Empieza a la altura del conector (380, 230).
+          2. Corona por el Norte (250, 120) y desciende por el Oeste (120, 250).
+          3. Transición tangente en el cuadrante inferior izquierdo hacia la M.
+          4. Circuito dinámico de la M conectando con el terminal de salida.
         */}
         <path
           d="
-            M 250,380
-            C 321.8,380 380,321.8 380,250
-            C 380,178.2 321.8,120 250,120
+            M 380,230
+            C 380,175 321.8,120 250,120
             C 178.2,120 120,178.2 120,250
             C 120,300 105,345 155,355
             C 185,360 210,330 225,230
