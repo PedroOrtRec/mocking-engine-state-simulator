@@ -8,6 +8,17 @@ interface AppSidebarProps {
   className?: string;
 }
 
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  ROLE_ADMIN: 'Administrador',
+  ROLE_USER: 'Usuario',
+  ROLE_GUEST: 'Invitado',
+};
+
+function formatRoleName(role?: string): string {
+  if (!role) return '';
+  return ROLE_DISPLAY_NAMES[role] ?? role;
+}
+
 export function AppSidebar({ className = '' }: AppSidebarProps) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -36,13 +47,13 @@ export function AppSidebar({ className = '' }: AppSidebarProps) {
         <div className="p-1.5">
           <MockerIcon size={200} />
         </div>
-        <span className="font-bold text-foreground tracking-tight text-sm hidden sm:inline">
+        <span className="font-bold text-muted-foreground tracking-tight text-sm hidden sm:inline">
           Mocking Engine Studio
         </span>
       </div>
 
       {/* 2. Menú de Navegación */}
-      <nav className="flex flex-col items-center gap-6">
+      <nav className="flex flex-col items-center gap-6 bg-secondary/80 p-3 rounded-xl border border-border/30">
         <NavLink to="/mocks" className={getNavLinkClass}>
           <Cable className="h-6 w-6" />
           <span>Mocks</span>
@@ -62,12 +73,12 @@ export function AppSidebar({ className = '' }: AppSidebarProps) {
       </nav>
 
       {/* 3. Espaciador flexible para empujar el pie hacia abajo */}
-      <div className="flex-1" />
+      <div className="flex-1 flex flex-col justify-end gap-2.5">
 
       {/* 4. Información de Usuario y Rol Activo */}
       {user && (
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground font-medium hidden md:inline">
+        <div className="flex items-between gap-2 text-xs p-1 rounded-xl bg-secondary/80 border border-border/30 justify-around">
+          <span className="text-foreground font-medium bg-card py-1 px-2 rounded-xl">
             {user.username}
           </span>
           <span
@@ -84,13 +95,13 @@ export function AppSidebar({ className = '' }: AppSidebarProps) {
             ) : (
               <Shield className="h-3 w-3" />
             )}
-            {user.role}
+            {formatRoleName(user.role)}
           </span>
         </div>
       )}
 
       {/* 5. Selector de Tema y Botón de Salida */}
-      <div className="mt-auto flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         <ThemeToggle className="w-full justify-center" />
         <button
           onClick={handleLogout}
@@ -99,6 +110,7 @@ export function AppSidebar({ className = '' }: AppSidebarProps) {
           <LogOut className="h-3.5 w-3.5" />
           <span>Salir</span>
         </button>
+      </div>
       </div>
     </aside>
   );

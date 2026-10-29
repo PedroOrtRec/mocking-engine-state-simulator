@@ -26,7 +26,7 @@ describe('AppSidebar Component', () => {
     expect(screen.getByRole('link', { name: /monitor/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /administración/i })).not.toBeInTheDocument();
     expect(screen.getByText('alice')).toBeInTheDocument();
-    expect(screen.getByText('ROLE_USER')).toBeInTheDocument();
+    expect(screen.getByText('Usuario')).toBeInTheDocument();
   });
 
   it('debe mostrar el enlace de Administración solo para usuarios ROLE_ADMIN', () => {
@@ -43,6 +43,7 @@ describe('AppSidebar Component', () => {
     );
 
     expect(screen.getByRole('link', { name: /administración/i })).toBeInTheDocument();
+    expect(screen.getByText('Administrador')).toBeInTheDocument();
   });
 
   it('debe mostrar el badge de ROLE_GUEST con icono de destello', () => {
@@ -58,7 +59,7 @@ describe('AppSidebar Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('ROLE_GUEST')).toBeInTheDocument();
+    expect(screen.getByText('Invitado')).toBeInTheDocument();
   });
 
   it('debe cerrar la sesión del usuario al pulsar Salir', async () => {

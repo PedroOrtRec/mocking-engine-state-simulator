@@ -25,7 +25,7 @@ describe('AppLayout Component', () => {
     expect(screen.getByRole('link', { name: /monitor/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /administración/i })).not.toBeInTheDocument();
     expect(screen.getByText('john_doe')).toBeInTheDocument();
-    expect(screen.getByText('ROLE_USER')).toBeInTheDocument();
+    expect(screen.getByText('Usuario')).toBeInTheDocument();
   });
 
   it('debe renderizar enlace "Administración" cuando el rol es ROLE_ADMIN', () => {
@@ -45,7 +45,7 @@ describe('AppLayout Component', () => {
     expect(screen.getByRole('link', { name: /monitor/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /administración/i })).toBeInTheDocument();
     expect(screen.getByText('admin_master')).toBeInTheDocument();
-    expect(screen.getByText('ROLE_ADMIN')).toBeInTheDocument();
+    expect(screen.getByText('Administrador')).toBeInTheDocument();
   });
 
   it('debe cerrar sesión al hacer clic en Salir', async () => {
