@@ -3,28 +3,32 @@ import { useId, type ComponentPropsWithoutRef } from 'react';
 export interface MockerIconProps extends ComponentPropsWithoutRef<'svg'> {
   size?: number | string;
   title?: string;
+  panelColor?: string;
+  panelOpacity?: number;
+  mColor?: string;
 }
 
 export function MockerIcon({
   size = 40,
   className,
   title = 'Mocking Engine Logo',
+  panelColor = '#2c636c',
+  panelOpacity = 0.52,
+  mColor = '#1d2b2d',
   ...props
 }: MockerIconProps) {
   const id = useId();
 
   // IDs con scope único para evitar colisiones en el DOM
-  const glowId = `glow-${id}`;
-  const mGradId = `m-grad-${id}`;
-  const rectBackGradId = `rect-back-grad-${id}`;
-  const rectFrontGradId = `rect-front-grad-${id}`;
-  const rectBackFillId = `rect-back-fill-${id}`;
-  const rectFrontFillId = `rect-front-fill-${id}`;
+  const corteFondoId = `corte-fondo-${id}`;
+  const corteMedioId = `corte-medio-${id}`;
+  const corteFrenteId = `corte-frente-${id}`;
+  const mPerspectivaId = `m-perspectiva-${id}`;
 
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 500 500"
+      viewBox="0 0 250 250"
       width={size}
       height={size}
       className={className}
@@ -34,118 +38,70 @@ export function MockerIcon({
     >
       <title>{title}</title>
       <defs>
-        {/* Filtro de resplandor neón difuso */}
-        <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="6" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        {/* Cortes diagonales para entrelazar la M en perspectiva entre los dos paneles */}
+        <clipPath id={corteFondoId}>
+          <polygon points="0,0 110,0 105,250 0,250" />
+        </clipPath>
 
-        {/* Gradiente principal de la M transversal (Violeta -> Cian eléctrico -> Menta neón) */}
-        <linearGradient id={mGradId} x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#7000ff" />
-          <stop offset="50%" stopColor="#00d2ff" />
-          <stop offset="100%" stopColor="#00ffa3" />
-        </linearGradient>
+        <clipPath id={corteMedioId}>
+          <polygon points="109,0 131,0 126,250 104,250" />
+        </clipPath>
 
-        {/* Gradiente del contorno del rectángulo posterior (Cian profundo a azul) */}
-        <linearGradient id={rectBackGradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#4facfe" stopOpacity="0.4" />
-        </linearGradient>
+        <clipPath id={corteFrenteId}>
+          <polygon points="130,0 250,0 250,250 125,250" />
+        </clipPath>
 
-        {/* Gradiente del contorno del rectángulo frontal (Azul a púrpura) */}
-        <linearGradient id={rectFrontGradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4facfe" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#7f00ff" stopOpacity="0.6" />
-        </linearGradient>
-
-        {/* Relleno translúcido para el plano posterior */}
-        <linearGradient id={rectBackFillId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.08" />
-          <stop offset="100%" stopColor="#4facfe" stopOpacity="0.02" />
-        </linearGradient>
-
-        {/* Relleno translúcido para el plano frontal */}
-        <linearGradient id={rectFrontFillId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#4facfe" stopOpacity="0.14" />
-          <stop offset="100%" stopColor="#7f00ff" stopOpacity="0.04" />
-        </linearGradient>
+        {/* 
+          Geometría de la M en perspectiva:
+          - Poste izquierdo (fondo): altura 59px, grosor 9px
+          - Poste derecho (frente): altura 73px, grosor 13px
+        */}
+        <path
+          id={mPerspectivaId}
+          fill={mColor}
+          d="
+            M 85,143 
+            L 85,84 
+            C 85,80 90,78 93,81 
+            L 124,115 
+            L 155,92 
+            C 159,89 165,91 165,97 
+            L 165,170 
+            C 165,174 152,174 152,170 
+            L 152,109 
+            L 127,128 
+            C 124,130 121,130 120,127 
+            L 94,99 
+            L 94,143 
+            C 94,147 85,147 85,143 
+            Z
+          "
+        />
       </defs>
 
-      {/* Fondo base delimitador */}
-      <rect width="100%" height="100%" fill="transparent" rx="30" />
+      {/* 1. PLANO TRASERO: Brazo izquierdo de la M */}
+      <use href={`#${mPerspectivaId}`} clipPath={`url(#${corteFondoId})`} />
 
-      <g filter={`url(#${glowId})`}>
-        {/* 
-          1. Rectángulo Posterior en Perspectiva (Plano de Estado / Mock State)
-          Inclinación isométrica oblicua con esquinas suavizadas
-        */}
-        <path
-          d="
-            M 160, 108
-            L 300, 82
-            C 308, 80.5 314, 85 312, 93
-            L 292, 271
-            C 291, 277 285, 281 278, 282
-            L 138, 308
-            C 130, 309.5 124, 305 126, 297
-            L 146, 119
-            C 147, 113 153, 109 160, 108
-            Z
-          "
-          fill={`url(#${rectBackFillId})`}
-          stroke={`url(#${rectBackGradId})`}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      {/* 2. RECTÁNGULO TRASERO */}
+      <polygon
+        points="15,45 205,15 205,175 15,205"
+        fill={panelColor}
+        fillOpacity={panelOpacity}
+      />
 
-        {/* 
-          2. Rectángulo Frontal Superpuesto en Perspectiva (Plano de Simulación / Engine)
-          Desplazado en profundidad hacia abajo a la derecha
-        */}
-        <path
-          d="
-            M 220, 168
-            L 360, 142
-            C 368, 140.5 374, 145 372, 153
-            L 352, 331
-            C 351, 337 345, 341 338, 342
-            L 198, 368
-            C 190, 369.5 184, 365 186, 357
-            L 206, 179
-            C 207, 173 213, 169 220, 168
-            Z
-          "
-          fill={`url(#${rectFrontFillId})`}
-          stroke={`url(#${rectFrontGradId})`}
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      {/* 3. PLANO INTERMEDIO: Cruce central de la M entre ambos rectángulos */}
+      <use href={`#${mPerspectivaId}`} clipPath={`url(#${corteMedioId})`} />
 
-        {/* 
-          3. 'M' Mayúscula Transversal (Trazo de Fuerza / Mocking Engine)
-          Atraviesa ambos planos de izquierda a derecha con alta energía y presencia
-        */}
-        <path
-          d="
-            M 115, 345
-            L 195, 145
-            L 255, 275
-            L 315, 135
-            L 395, 335
-          "
-          fill="none"
-          stroke={`url(#${mGradId})`}
-          strokeWidth="16"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
+      {/* 4. RECTÁNGULO DELANTERO */}
+      <polygon
+        points="45,75 235,45 235,205 45,235"
+        fill={panelColor}
+        fillOpacity={panelOpacity}
+      />
+
+      {/* 5. PRIMER PLANO: Brazo derecho de la M */}
+      <use href={`#${mPerspectivaId}`} clipPath={`url(#${corteFrenteId})`} />
+
     </svg>
   );
 }
