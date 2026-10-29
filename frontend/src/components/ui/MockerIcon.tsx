@@ -87,6 +87,8 @@ export function MockerIcon({
         points="15,45 205,15 205,175 15,205"
         fill={panelColor}
         fillOpacity={panelOpacity}
+        stroke={mColor}
+        strokeWidth={2}
       />
 
       {/* 3. PLANO INTERMEDIO: Cruce central de la M entre ambos rectángulos */}
@@ -97,6 +99,9 @@ export function MockerIcon({
         points="45,75 235,45 235,205 45,235"
         fill={panelColor}
         fillOpacity={panelOpacity}
+        stroke={mColor}
+        strokeWidth={2}
+
       />
 
       {/* 5. PRIMER PLANO: Brazo derecho de la M */}

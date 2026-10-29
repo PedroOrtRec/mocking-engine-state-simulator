@@ -68,8 +68,8 @@
   --input: #cbd5e1;
   --ring: #6366f1;
 
-  --mocker-panel: #2c636c;
-  --mocker-m: #0f172a;
+  --mocker-panel: #0f172a20;
+  --mocker-m: #0284c7;
 }
 
 /* 4. Modo Oscuro (.dark) */
@@ -102,7 +102,7 @@
   --input: #334155;
   --ring: #818cf8;
 
-  --mocker-panel: #2c636c;
+  --mocker-panel: #f8fafc;
   --mocker-m: #38bdf8;
 }
 
