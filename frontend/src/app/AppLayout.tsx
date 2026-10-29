@@ -29,7 +29,7 @@ export function AppLayout() {
           {/* Logo y Enlaces de Navegación */}
           <div className="flex flex-col justify-center items-center gap-6 p-2">
               <div className="p-1.5">
-                <MockerIcon />
+                <MockerIcon size={200} />
               </div>
               <span className="font-bold text-white tracking-tight text-sm hidden sm:inline">
                 Mocking Engine Studio

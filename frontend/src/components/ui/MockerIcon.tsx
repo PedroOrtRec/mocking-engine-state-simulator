@@ -30,6 +30,7 @@ export function MockerIcon({
     >
       <title>{title}</title>
       <defs>
+        {/* Filtro de resplandor neón */}
         <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="4" result="blur" />
           <feMerge>
@@ -38,38 +39,32 @@ export function MockerIcon({
           </feMerge>
         </filter>
 
+        {/* Gradiente ciberpunk para la base de datos (cian -> azul -> púrpura) */}
         <linearGradient id={cyberGradId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#00f2fe" />
           <stop offset="50%" stopColor="#4facfe" />
           <stop offset="100%" stopColor="#7f00ff" />
         </linearGradient>
 
+        {/* Gradiente neón acentuado (violeta -> cian -> verde neón) */}
         <linearGradient id={neonAccentId} x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#7000ff" />
           <stop offset="60%" stopColor="#00d2ff" />
           <stop offset="100%" stopColor="#00ffa3" />
         </linearGradient>
 
+        {/* Gradiente vertical translúcido para el volumen de datos */}
         <linearGradient id={dbFillId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.3" />
           <stop offset="100%" stopColor="#7f00ff" stopOpacity="0.1" />
         </linearGradient>
       </defs>
 
+      {/* Fondo delimitador */}
       <rect width="100%" height="100%" fill="transparent" rx="30" />
 
       <g filter={`url(#${glowId})`}>
-        <circle
-          cx="250"
-          cy="250"
-          r="130"
-          fill="none"
-          stroke={`url(#${neonAccentId})`}
-          strokeWidth="13"
-          strokeLinecap="round"
-          opacity="0.9"
-        />
-
+        {/* Base de datos (estado / mocks) */}
         <g
           stroke={`url(#${cyberGradId})`}
           strokeWidth="4"
@@ -82,6 +77,7 @@ export function MockerIcon({
           <ellipse cx="195" cy="155" rx="70" ry="25" />
         </g>
 
+        {/* Terminal / conector API */}
         <g
           stroke={`url(#${neonAccentId})`}
           strokeWidth="4"
@@ -95,8 +91,27 @@ export function MockerIcon({
           <path d="M 335,197 L 335,212 C 335,220 340,225 350,225 C 360,225 365,220 365,212 L 365,197" fill="#0b1730" />
         </g>
 
+        {/* 
+          Trazo continuo principal:
+          1. Arco circular envolvente de 270° (Sur -> Este -> Norte -> Oeste).
+          2. Transición tangente en el cuadrante inferior izquierdo hacia la M.
+          3. Circuito dinámico de la M conectando con el terminal de salida.
+        */}
         <path
-          d="M 125,265 C 105,335 155,365 200,345 C 225,330 225,210 225,195 C 225,185 242,275 250,285 C 258,275 275,185 275,195 C 275,230 280,335 320,335 C 350,335 375,295 375,245 L 375,230 C 375,225 365,225 350,225"
+          d="
+            M 250,380
+            C 321.8,380 380,321.8 380,250
+            C 380,178.2 321.8,120 250,120
+            C 178.2,120 120,178.2 120,250
+            C 120,300 105,345 155,355
+            C 185,360 210,330 225,230
+            C 225,185 242,275 250,285
+            C 258,275 275,185 275,195
+            C 275,230 280,335 320,335
+            C 350,335 375,295 375,245
+            L 375,230
+            C 375,225 365,225 350,225
+          "
           fill="none"
           stroke={`url(#${neonAccentId})`}
           strokeWidth="14"
