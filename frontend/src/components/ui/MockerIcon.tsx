@@ -92,25 +92,29 @@ export function MockerIcon({
         </g>
 
         {/* 
-          Trazo continuo principal:
-          1. Empieza a la altura del conector (380, 230).
-          2. Corona por el Norte (250, 120) y desciende por el Oeste (120, 250).
-          3. Transición tangente en el cuadrante inferior izquierdo hacia la M.
-          4. Circuito dinámico de la M conectando con el terminal de salida.
+          Trazo continuo conceptual (Cuadrado con bordes redondeados + M robusta):
+          1. Empieza en la esquina superior derecha (380, 75) y avanza a la izquierda.
+          2. Redondea la esquina superior izquierda y baja por el lateral izquierdo.
+          3. Redondea la esquina inferior izquierda y avanza por el borde inferior.
+          4. Se desvía hacia arriba formando la 'M' robusta (picos en 195 y 305, valle en 250).
+          5. Vuelve al borde inferior (350, 425) y continúa hacia la esquina inferior derecha.
+          6. Redondea la esquina inferior derecha y sube por el lateral derecho hasta medio camino (425, 240).
         */}
         <path
           d="
-            M 380,230
-            C 380,175 321.8,120 250,120
-            C 178.2,120 120,178.2 120,250
-            C 120,300 105,345 155,355
-            C 185,360 210,330 225,230
-            C 225,185 242,275 250,285
-            C 258,275 275,185 275,195
-            C 275,230 280,335 320,335
-            C 350,335 375,295 375,245
-            L 375,230
-            C 375,225 365,225 350,225
+            M 380,75
+            L 120,75
+            C 95,75 75,95 75,120
+            L 75,380
+            C 75,405 95,425 120,425
+            L 150,425
+            C 165,425 175,230 195,195
+            C 210,175 235,280 250,305
+            C 265,280 290,175 305,195
+            C 325,230 335,425 350,425
+            L 380,425
+            C 405,425 425,405 425,380
+            L 425,240
           "
           fill="none"
           stroke={`url(#${neonAccentId})`}
