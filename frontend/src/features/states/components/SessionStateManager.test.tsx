@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SessionStateManager } from './SessionStateManager';
 import { statesApi, type ScenarioState } from '../api/states-api';
+import { useAuthStore } from '@/stores/use-auth-store';
 
 vi.mock('../api/states-api', () => ({
   statesApi: {
@@ -49,20 +50,25 @@ describe('SessionStateManager Component', () => {
     vi.mocked(statesApi.getAll).mockResolvedValue(mockStates);
   });
 
-  it('debe listar las sesiones y mostrar el estado de la sesión seleccionada', async () => {
+  it('debe listar las sesiones en cards y permitir seleccionar otra sesión al hacer clic', async () => {
+    const handleSelect = vi.fn();
     renderWithClient(
       <SessionStateManager
         selectedSessionKey="default"
-        onSelectSessionKey={vi.fn()}
+        onSelectSessionKey={handleSelect}
       />
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Sistema (Default)')).toBeInTheDocument();
+      expect(screen.getByTestId('session-card-test_session_key')).toBeInTheDocument();
     });
 
-    expect(screen.getByLabelText(/seleccionar sesión/i)).toBeInTheDocument();
-    expect(screen.getByText('default', { selector: 'code' })).toBeInTheDocument();
+    expect(screen.getByText('Sistema')).toBeInTheDocument();
+    expect(screen.getByText('Custom')).toBeInTheDocument();
+    expect(screen.getAllByText(/slot disponible/i)).toHaveLength(3); // 5 - 2 = 3 slots disponibles
+
+    await userEvent.click(screen.getByTestId('session-card-test_session_key'));
+    expect(handleSelect).toHaveBeenCalledWith('test_session_key');
   });
 
   it('debe permitir editar y guardar el JSON en una sesión personalizada', async () => {
@@ -80,7 +86,7 @@ describe('SessionStateManager Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('test_session')).toBeInTheDocument();
+      expect(screen.getByTestId('session-card-test_session_key')).toBeInTheDocument();
     });
 
     const textarea = screen.getByLabelText(/variables de estado/i);
@@ -105,7 +111,7 @@ describe('SessionStateManager Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('test_session')).toBeInTheDocument();
+      expect(screen.getByTestId('session-card-test_session_key')).toBeInTheDocument();
     });
 
     const textarea = screen.getByLabelText(/variables de estado/i);
@@ -115,7 +121,7 @@ describe('SessionStateManager Component', () => {
     expect(screen.getByRole('button', { name: /guardar estado/i })).toBeDisabled();
   });
 
-  it('debe abrir modal y crear una nueva sesión', async () => {
+  it('debe abrir modal desde un slot disponible y crear una nueva sesión', async () => {
     const user = userEvent.setup();
     const handleSelect = vi.fn();
 
@@ -136,10 +142,10 @@ describe('SessionStateManager Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /nueva sesión/i })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /crear estado/i })[0]).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /nueva sesión/i }));
+    await user.click(screen.getAllByRole('button', { name: /crear estado/i })[0]);
 
     const nameInput = screen.getByLabelText(/nombre de la sesión/i);
     await user.type(nameInput, 'nuevo_flujo');
@@ -172,7 +178,7 @@ describe('SessionStateManager Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('test_session')).toBeInTheDocument();
+      expect(screen.getByTestId('session-card-test_session_key')).toBeInTheDocument();
     });
 
     const resetBtn = screen.getByRole('button', { name: /restaurar original/i });
@@ -180,6 +186,56 @@ describe('SessionStateManager Component', () => {
 
     await waitFor(() => {
       expect(statesApi.reset).toHaveBeenCalledWith(2);
+    });
+  });
+
+  it('no debe mostrar slots vacíos de creación cuando el usuario es ROLE_GUEST', async () => {
+    useAuthStore.setState({
+      token: 'guest-tok',
+      user: { username: 'guest_user', role: 'ROLE_GUEST' },
+      isAuthenticated: true,
+    });
+
+    renderWithClient(
+      <SessionStateManager
+        selectedSessionKey="default"
+        onSelectSessionKey={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-card-test_session_key')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/slot disponible/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /crear estado/i })).not.toBeInTheDocument();
+  });
+
+  it('debe permitir copiar la clave de sesión y eliminar una sesión personalizada', async () => {
+    const user = userEvent.setup();
+    vi.mocked(statesApi.delete).mockResolvedValueOnce(undefined as unknown as void);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderWithClient(
+      <SessionStateManager
+        selectedSessionKey="test_session_key"
+        onSelectSessionKey={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /copiar clave de test_session/i })).toBeInTheDocument();
+    });
+
+    // Copiar clave
+    await user.click(screen.getByRole('button', { name: /copiar clave de test_session/i }));
+
+    // Eliminar sesión
+    const deleteBtn = screen.getByRole('button', { name: /eliminar sesión test_session/i });
+    await user.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(statesApi.delete).toHaveBeenCalledWith(2);
     });
   });
 });

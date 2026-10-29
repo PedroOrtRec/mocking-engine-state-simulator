@@ -1,6 +1,7 @@
 import { useState, useId } from 'react';
 import { useStates } from '../hooks/use-states';
 import type { ScenarioState } from '../api/states-api';
+import { useAuthStore } from '@/stores/use-auth-store';
 import {
   Database,
   Plus,
@@ -46,7 +47,10 @@ export function SessionStateManager({
     isResetting,
   } = useStates();
 
-  const [copiedKey, setCopiedKey] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const isGuest = user?.role === 'ROLE_GUEST';
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
   const [newSessionJson, setNewSessionJson] = useState('{\n  "theme": "dark",\n  "count": 0\n}');
@@ -76,10 +80,11 @@ export function SessionStateManager({
     ? activeSessionEntry.draft
     : formatPrettyJson(activeState?.stateJson);
 
-  const handleCopyKey = (key: string) => {
+  const handleCopyKey = (key: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     navigator.clipboard.writeText(key);
-    setCopiedKey(true);
-    setTimeout(() => setCopiedKey(false), 2000);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
   };
 
   const handleJsonChange = (val: string) => {
@@ -201,18 +206,22 @@ export function SessionStateManager({
     }
   };
 
-  const handleDeleteSession = async () => {
-    if (!activeState || activeState.system) return;
+  const handleDeleteSession = async (stateToDelete: ScenarioState, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (stateToDelete.system) return;
     const confirmDelete = window.confirm(
-      `¿Estás seguro de que deseas eliminar la sesión "${activeState.name}"? Esta acción no se puede deshacer.`
+      `¿Estás seguro de que deseas eliminar la sesión "${stateToDelete.name}"? Esta acción no se puede deshacer.`
     );
     if (!confirmDelete) return;
 
     try {
-      await deleteState(activeState.id);
-      // Fall back to default or first remaining state
-      const fallback = states.find((s) => s.system)?.sessionKey ?? 'default';
-      onSelectSessionKey(fallback);
+      await deleteState(stateToDelete.id);
+      // Si eliminamos la sesión activa, seleccionamos la sesión de sistema por defecto u otra restante
+      if (stateToDelete.sessionKey === selectedSessionKey) {
+        const fallback =
+          states.find((s) => s.system && s.id !== stateToDelete.id)?.sessionKey ?? 'default';
+        onSelectSessionKey(fallback);
+      }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { detail?: string } }; message?: string };
       alert(errorObj.response?.data?.detail ?? 'Error al eliminar la sesión');
@@ -221,49 +230,18 @@ export function SessionStateManager({
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 shadow-xl space-y-6 text-card-foreground">
-      {/* Encabezado y Selector de Sesiones */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/30 text-primary">
-            <Database className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
-              Gestor de Sesiones & Estado Aislado
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Escenarios de pruebas 1:N aislados por usuario y persistidos en base de datos
-            </p>
-          </div>
+      {/* Encabezado sin selector ni botón */}
+      <div className="flex items-center gap-3 pb-4 border-b border-border">
+        <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/30 text-primary">
+          <Database className="h-5 w-5" />
         </div>
-
-        <div className="flex items-center gap-2">
-          {/* Selector de Sesiones disponibles */}
-          <div className="relative">
-            <label htmlFor="session-select" className="sr-only">Seleccionar Sesión</label>
-            <select
-              id="session-select"
-              aria-label="Seleccionar Sesión"
-              value={activeState?.sessionKey ?? selectedSessionKey}
-              onChange={(e) => onSelectSessionKey(e.target.value)}
-              disabled={isLoading || states.length === 0}
-              className="bg-background border border-border text-foreground text-xs rounded-lg px-3 py-2 pr-8 focus:outline-none focus:border-primary font-mono cursor-pointer"
-            >
-              {states.map((s) => (
-                <option key={s.id} value={s.sessionKey}>
-                  {s.system ? `[Sistema] ${s.name}` : `[Custom] ${s.name}`} ({s.sessionKey})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-xs font-medium text-primary-foreground rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Nueva Sesión
-          </button>
+        <div>
+          <h2 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+            Gestor de Sesiones & Estado Aislado
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Escenarios de pruebas 1:N aislados por usuario y persistidos en base de datos
+          </p>
         </div>
       </div>
 
@@ -274,75 +252,123 @@ export function SessionStateManager({
           No se encontró ninguna sesión activa. Crea una nueva sesión para comenzar.
         </div>
       ) : (
-        /* Card con el Estado de la Sesión Seleccionada */
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/30 border border-border rounded-xl">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-foreground">{activeState.name}</span>
-                <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                    activeState.system
-                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300 dark:bg-amber-950/60 dark:border-amber-800'
-                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800'
+        /* Grid de Cards de Estado y Slots Vacíos */
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+            {states.map((s) => {
+              const isSelected = s.sessionKey === activeState.sessionKey;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => onSelectSessionKey(s.sessionKey)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectSessionKey(s.sessionKey);
+                    }
+                  }}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-3 text-xs select-none ${
+                    isSelected
+                      ? 'bg-card border-primary ring-2 ring-primary/25 shadow-md'
+                      : 'bg-muted/30 hover:bg-muted/60 border-border hover:border-border/80'
                   }`}
+                  data-testid={`session-card-${s.sessionKey}`}
                 >
-                  {activeState.system ? (
-                    <>
-                      <Sparkles className="h-2.5 w-2.5" />
-                      Sistema (Default)
-                    </>
-                  ) : (
-                    'Personalizada'
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground font-mono">X-Session-ID:</span>
-                <code className="text-primary font-mono font-medium px-1.5 py-0.5 bg-primary/10 rounded border border-primary/20">
-                  {activeState.sessionKey}
-                </code>
-                <button
-                  onClick={() => handleCopyKey(activeState.sessionKey)}
-                  className="p-1 hover:text-foreground text-muted-foreground transition-colors cursor-pointer"
-                  title="Copiar Session Key"
-                >
-                  {copiedKey ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                </button>
-              </div>
-            </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-foreground truncate block text-xs" title={s.name}>
+                        {s.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono truncate block">
+                        {s.sessionKey}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0 flex items-center gap-1 ${
+                        s.system
+                          ? 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300 dark:bg-amber-950/60 dark:border-amber-800'
+                          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800'
+                      }`}
+                    >
+                      {s.system ? (
+                        <>
+                          <Sparkles className="h-2.5 w-2.5" />
+                          Sistema
+                        </>
+                      ) : (
+                        'Custom'
+                      )}
+                    </span>
+                  </div>
 
-            <div className="flex items-center gap-2">
-              {!activeState.system && (
-                <button
-                  onClick={handleDeleteSession}
-                  disabled={isDeleting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 text-xs text-destructive rounded-lg transition-colors cursor-pointer"
-                  title="Eliminar esta sesión personalizada"
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-auto">
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      X-Session-ID
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyKey(s.sessionKey, e)}
+                        className="p-1 hover:text-foreground text-muted-foreground rounded transition-colors cursor-pointer"
+                        title="Copiar Session Key"
+                        aria-label={`Copiar clave de ${s.name}`}
+                      >
+                        {copiedKey === s.sessionKey ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      {!s.system && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteSession(s, e)}
+                          disabled={isDeleting}
+                          className="p-1 hover:text-destructive text-muted-foreground rounded transition-colors cursor-pointer"
+                          title="Eliminar sesión"
+                          aria-label={`Eliminar sesión ${s.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Slots vacíos disponibles para usuarios no invitados (hasta 5 slots en total) */}
+            {!isGuest &&
+              Array.from({ length: Math.max(0, 5 - states.length) }).map((_, idx) => (
+                <div
+                  key={`empty-slot-${idx}`}
+                  className="p-3.5 rounded-xl border border-dashed border-border/80 bg-muted/15 flex flex-col items-center justify-center gap-2 min-h-[96px] text-center"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Eliminar
-                </button>
-              )}
-              {activeState.system && (
-                <span className="text-[11px] text-muted-foreground italic">
-                  Sesión base del sistema protegida
-                </span>
-              )}
-            </div>
+                  <span className="text-[11px] text-muted-foreground font-medium">
+                    Slot disponible ({states.length + idx + 1}/5)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors cursor-pointer border border-primary/20"
+                    title="Crear nueva sesión en este slot"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Crear estado</span>
+                  </button>
+                </div>
+              ))}
           </div>
 
-          {/* Editor de JSON del Estado */}
-          <div className="space-y-2">
+          {/* Editor de JSON del Estado Seleccionado */}
+          <div className="space-y-2 pt-2 border-t border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileCode2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <label htmlFor="state-json-editor" className="text-xs font-medium text-foreground">
-                  Variables de Estado (JSON)
+                  Variables de Estado — <strong className="font-mono text-primary">{activeState.name}</strong> ({activeState.sessionKey})
                 </label>
               </div>
 
