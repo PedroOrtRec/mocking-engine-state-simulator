@@ -91,7 +91,7 @@ export function MockerIcon({
           <ellipse cx="130.663" cy="155" rx="70" ry="25" />
         </g>
 
-        {/* Terminal / conector API con silueta escalonada basada en tu boceto */}
+        {/* Terminal / conector API invertido (parte estrecha en el cable x=275.663, parte ancha a la izquierda) */}
         <g
           stroke={`url(#${neonAccentId})`}
           strokeWidth="12"
@@ -99,29 +99,33 @@ export function MockerIcon({
           strokeLinejoin="round"
           fill="#0b1730"
         >
-          {/* Cuerpo principal y cabezal escalonado (adaptado con simetría y conectado a 275.663, 45.47) */}
+          {/* Silueta del conector: cuello estrecho a la derecha (cable) -> cuerpo ancho a la izquierda */}
           <path
             d="
               M 275.663, 45.47
-              L 275.663, 27
-              C 275.663, 20 268, 17.47 258, 17.47
-              L 236, 17.47
-              C 229, 17.47 226, 22 226, 32.47
-              L 194, 32.47
-              C 188, 32.47 184, 36.47 184, 42.47
-              L 184, 48.47
-              C 184, 54.47 188, 58.47 194, 58.47
-              L 226, 58.47
-              C 226, 68.94 229, 73.47 236, 73.47
-              L 258, 73.47
-              C 268, 73.47 275.663, 70.94 275.663, 63.94
+              L 275.663, 34
+              C 275.663, 32.47 270, 32.47 265, 32.47
+              L 245, 32.47
+              C 240, 32.47 238, 25 238, 20
+              L 238, 17.47
+              C 238, 17.47 234, 17.47 228, 17.47
+              L 203, 17.47
+              C 197, 17.47 195, 21.47 195, 27.47
+              L 195, 63.47
+              C 195, 69.47 197, 73.47 203, 73.47
+              L 228, 73.47
+              C 234, 73.47 238, 73.47 238, 68.94
+              L 238, 65
+              C 238, 59 240, 58.47 245, 58.47
+              L 265, 58.47
+              C 270, 58.47 275.663, 58.47 275.663, 56.94
               Z
             "
           />
 
-          {/* Clavijas metálicas frontales (proyectándose a la izquierda desde la boquilla) */}
-          <path d="M 184,39 L 160,39" fill="none" strokeWidth="8" />
-          <path d="M 184,52 L 160,52" fill="none" strokeWidth="8" />
+          {/* Clavijas metálicas frontales (emergen de la parte ancha hacia la izquierda) */}
+          <path d="M 195, 33 L 165, 33" fill="none" strokeWidth="8" />
+          <path d="M 195, 58 L 165, 58" fill="none" strokeWidth="8" />
         </g>
 
         {/* 
