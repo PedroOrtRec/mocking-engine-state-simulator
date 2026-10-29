@@ -12,9 +12,9 @@ export function MockerIcon({
   size = 40,
   className,
   title = 'Mocking Engine Logo',
-  panelColor = '#2c636c',
+  panelColor = 'var(--color-mocker-panel, #2c636c)',
   panelOpacity = 0.52,
-  mColor = '#1d2b2d',
+  mColor = 'var(--color-mocker-m, #1d2b2d)',
   ...props
 }: MockerIconProps) {
   const id = useId();
