@@ -91,21 +91,37 @@ export function MockerIcon({
           <ellipse cx="130.663" cy="155" rx="70" ry="25" />
         </g>
 
-        {/* Terminal / conector API robusto (mismo estilo y grosor que el marco) */}
+        {/* Terminal / conector API con silueta escalonada basada en tu boceto */}
         <g
           stroke={`url(#${neonAccentId})`}
-          strokeWidth="14"
+          strokeWidth="12"
           strokeLinecap="round"
           strokeLinejoin="round"
+          fill="#0b1730"
         >
-          {/* Clavija superior (apuntando a la izquierda) */}
-          <path d="M 235,30 L 195,30" fill="none" />
+          {/* Cuerpo principal y cabezal escalonado (adaptado con simetría y conectado a 275.663, 45.47) */}
+          <path
+            d="
+              M 275.663, 45.47
+              L 275.663, 27
+              C 275.663, 20 268, 17.47 258, 17.47
+              L 236, 17.47
+              C 229, 17.47 226, 22 226, 32.47
+              L 194, 32.47
+              C 188, 32.47 184, 36.47 184, 42.47
+              L 184, 48.47
+              C 184, 54.47 188, 58.47 194, 58.47
+              L 226, 58.47
+              C 226, 68.94 229, 73.47 236, 73.47
+              L 258, 73.47
+              C 268, 73.47 275.663, 70.94 275.663, 63.94
+              Z
+            "
+          />
 
-          {/* Clavija inferior (apuntando a la izquierda) */}
-          <path d="M 235,61 L 195,61" fill="none" />
-
-          {/* Cuerpo principal robusto del conector con interior relleno */}
-          <rect x="235" y="16" width="40" height="59" rx="10" fill="#0b1730" />
+          {/* Clavijas metálicas frontales (proyectándose a la izquierda desde la boquilla) */}
+          <path d="M 184,39 L 160,39" fill="none" strokeWidth="8" />
+          <path d="M 184,52 L 160,52" fill="none" strokeWidth="8" />
         </g>
 
         {/* 
