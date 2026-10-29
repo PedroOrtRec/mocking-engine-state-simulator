@@ -91,21 +91,21 @@ export function MockerIcon({
           <ellipse cx="130.663" cy="155" rx="70" ry="25" />
         </g>
 
-        {/* Terminal / conector API horizontal (clavijas a la izquierda, base en 275.663, 45.47) */}
+        {/* Terminal / conector API robusto (mismo estilo y grosor que el marco) */}
         <g
           stroke={`url(#${neonAccentId})`}
-          strokeWidth="4"
+          strokeWidth="14"
           strokeLinecap="round"
           strokeLinejoin="round"
-          fill="none"
         >
-          <line x1="235.663" y1="30.47" x2="215.663" y2="30.47" strokeWidth="7" />
-          <line x1="235.663" y1="60.47" x2="215.663" y2="60.47" strokeWidth="7" />
-          <rect x="235.663" y="15.47" width="12" height="60" rx="6" fill="#0b1730" />
-          <path
-            d="M 247.663,30.47 L 262.663,30.47 C 270.663,30.47 275.663,35.47 275.663,45.47 C 275.663,55.47 270.663,60.47 262.663,60.47 L 247.663,60.47"
-            fill="#0b1730"
-          />
+          {/* Clavija superior (apuntando a la izquierda) */}
+          <path d="M 235,30 L 195,30" fill="none" />
+
+          {/* Clavija inferior (apuntando a la izquierda) */}
+          <path d="M 235,61 L 195,61" fill="none" />
+
+          {/* Cuerpo principal robusto del conector con interior relleno */}
+          <rect x="235" y="16" width="40" height="59" rx="10" fill="#0b1730" />
         </g>
 
         {/* 
