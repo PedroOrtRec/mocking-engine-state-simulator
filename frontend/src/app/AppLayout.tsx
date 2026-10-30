@@ -8,7 +8,7 @@ export function AppLayout() {
       <AppSidebar />
 
       {/* Contenido principal inyectado por la ruta activa */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8 overflow-y-auto">
+      <main className="flex-1">
         <Outlet />
       </main>
     </div>

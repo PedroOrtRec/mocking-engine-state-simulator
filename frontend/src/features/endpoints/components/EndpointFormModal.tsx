@@ -368,7 +368,7 @@ function EndpointFormContent({ initialData, onClose, activeSessionKey }: Content
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-h-[90vh] overflow-y-auto">
       <div className="flex items-center justify-between pb-3 border-b border-border">
         <div>
           <h2 className="text-lg font-bold text-foreground">

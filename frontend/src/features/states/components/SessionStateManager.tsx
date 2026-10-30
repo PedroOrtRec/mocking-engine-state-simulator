@@ -253,8 +253,8 @@ export function SessionStateManager({
         </div>
       ) : (
         /* Grid de Cards de Estado y Slots Vacíos */
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        <div className="flex flex-col-reverse gap-6">
+          <div className="grid grid-cols-2 gap-3">
             {states.map((s) => {
               const isSelected = s.sessionKey === activeState.sessionKey;
               return (
@@ -303,17 +303,14 @@ export function SessionStateManager({
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-auto">
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      X-Session-ID
-                    </span>
+                    <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-auto">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={(e) => handleCopyKey(s.sessionKey, e)}
                         className="p-1 hover:text-foreground text-muted-foreground rounded transition-colors cursor-pointer"
                         title="Copiar Session Key"
-                        aria-label={`Copiar clave de ${s.name}`}
+                          aria-label={`Copiar clave de ${s.name}`}
                       >
                         {copiedKey === s.sessionKey ? (
                           <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />

@@ -77,7 +77,7 @@ export function AppSidebar({ className = '' }: AppSidebarProps) {
 
       {/* 4. Información de Usuario y Rol Activo */}
       {user && (
-        <div className="flex items-between gap-2 text-xs p-1 rounded-xl bg-secondary/80 border border-border/30 justify-around">
+        <div className="flex items-between gap-2 text-xs p-1 rounded-xl bg-secondary/80 border border-border/30 justify-between">
           <span className="text-foreground font-medium bg-card py-1 px-2 rounded-xl">
             {user.username}
           </span>
